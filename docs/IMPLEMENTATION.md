@@ -14,7 +14,7 @@
 | Back-office | Django admin (tous les modèles) |
 | Frontend | À venir (`client/`) |
 
-Tout se lance avec `docker compose up --build` à la racine (`docker-compose.yml`) : PostgreSQL, Redis, le backend (Daphne) et le frontend React servi par nginx sur **http://localhost:8080**. nginx sert l'application et relaie `/api`, `/admin`, `/static`, `/media` et `/ws` vers Django : tout est sur la même origine. En développement, PostgreSQL et Redis seuls (`docker compose up -d postgres redis`, ports hôte 5434 et 6380) et Django dans le `venv/` à la racine.
+Tout se lance avec `docker compose up --build` à la racine (`docker-compose.yml`) : PostgreSQL, Redis, le backend (Daphne) et le frontend React servi par nginx sur **http://localhost:8088**. nginx sert l'application et relaie `/api`, `/admin`, `/static`, `/media` et `/ws` vers Django : tout est sur la même origine. En développement, PostgreSQL et Redis seuls (`docker compose up -d postgres redis`, ports hôte 5434 et 6380) et Django dans le `venv/` à la racine.
 
 ---
 
@@ -89,7 +89,7 @@ Connexion : `ws://<hôte>/ws/?token=<JWT access>`. Un jeton absent ou invalide e
 | :--- | :--- | :--- |
 | `kitchen_pos` | caissiers, serveurs | `seance_opened`, `order_created` (salle), `order_cancelled`, `seance_closed` |
 | `reservations` | responsables | `reservation_created`, `parking_confirmed`, `parking_refused`, `reservation_confirmed`, `table_reassigned`, `checked_in`, `reservation_no_show`, `reservation_cancelled` |
-| `parking` | stationneurs | `parking_requested` |
+| `parking` | stationneurs | `parking_requested`, puis tous les événements d'une réservation avec véhicule (confirmation, annulation, no-show…) : une annulation libère la place |
 | `deliveries` | responsables réservation (les livreurs ne reçoivent que leurs livraisons, via `user_<id>`) | `order_created` (livraison), `order_cancelled`, `delivery_assigned`, `order_delivered`, `delivery_failed` (le bureau voit les livreurs redevenir disponibles) |
 | `manager` | gérant (abonné à tous les groupes) | `addition_paid`, `delivery_failed`, `review_created`, `stock_request_created`, `rupture_started`, `rupture_ended` |
 | `user_<id>` | l'utilisateur | événements de ses réservations, `delivery_assigned`, `order_on_the_way`, `order_delivered`, `delivery_failed` |
@@ -128,6 +128,7 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 - **Temps réel** : `useRealtime()` ouvre un WebSocket par utilisateur connecté, avec un jeton fraîchement rafraîchi à chaque (re)connexion et une reconnexion progressive (1 s → 30 s). Chaque espace affiche le flux « Activité en direct ».
 - **Espace client** (`/espace/client?onglet=…`) : réserver (créneaux 12h–13h et 19h–21h, lundi refusé côté interface, table proposée affichée), commander en livraison (panier depuis le Menu), suivre et annuler réservations et commandes, noter les Additions (cibles issues de l'Addition, 7 jours). Chaque événement personnel (`user_<id>`) recharge les listes et s'affiche en notification.
 - **Espace réservations** (`/espace/reservations`) : onglets Aujourd'hui / À valider / À venir / Livraisons / Historique avec compteurs ; confirmer, changer de table (tables proposées par `free_tables`), check-in avec correction du nombre de personnes, no-show une fois l'heure passée ; livraisons à attribuer, état des livreurs et livraisons en route, le tout en direct.
+- **Espace parking** (`/espace/parking`) : demandes en attente (garder une place, avec les places déjà prises sur le créneau, ou « parking complet ») et places gardées à venir, en direct.
 - **Briques partagées** (`src/ui/`) : `Tabs` + `useTab` (onglet dans l'URL), `Toast`, `Loading` ; `useLiveRefresh(refresh, notifications)` dans `realtime.ts` recharge les données à chaque événement et traduit ceux qui comptent en notification.
 - **Espaces pas encore construits** : page d'attente avec la liste de ce qu'ils permettront et le flux « Activité en direct ». `CONTENT` dans `pages/SpacePage.tsx` associe un rôle à son espace dès qu'il existe.
 - **Langue** : `LANGUAGE_CODE = 'fr'` côté Django, pour que les messages de validation (mot de passe, champs) arrivent en français dans les formulaires.
@@ -135,7 +136,7 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 ## 8. Lancer et tester (depuis `server/`)
 
 ```bash
-docker compose up --build                              # depuis la racine : toute la pile sur http://localhost:8080
+docker compose up --build                              # depuis la racine : toute la pile sur http://localhost:8088
 
 # ou, pour développer le backend :
 docker compose up -d postgres redis

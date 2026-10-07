@@ -19,6 +19,8 @@ const ENDPOINTS = {
   reservationCheckIn: (id: number) => `/api/reservations/${id}/check_in/`,
   reservationNoShow: (id: number) => `/api/reservations/${id}/no_show/`,
   reservationFreeTables: (id: number) => `/api/reservations/${id}/free_tables/`,
+  parkingConfirm: (id: number) => `/api/reservations/${id}/confirm_parking/`,
+  parkingRefuse: (id: number) => `/api/reservations/${id}/refuse_parking/`,
   orders: '/api/orders/',
   orderCancel: (id: number) => `/api/orders/${id}/cancel/`,
   orderAssign: (id: number) => `/api/orders/${id}/assign_deliverer/`,

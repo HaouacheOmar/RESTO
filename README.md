@@ -43,12 +43,12 @@ Requires Docker only.
 docker compose up --build
 ```
 
-Then open **http://localhost:8080**. The stack starts PostgreSQL, Redis, the Django/Daphne backend (migrations and demo data applied on startup) and the React frontend served by nginx, which also proxies the API, the admin and the WebSockets on the same origin.
+Then open **http://localhost:8088**. The stack starts PostgreSQL, Redis, the Django/Daphne backend (migrations and demo data applied on startup) and the React frontend served by nginx, which also proxies the API, the admin and the WebSockets on the same origin.
 
-- **http://localhost:8080/**: landing page (live menu and dish of the day).
-- **http://localhost:8080/api/docs/**: interactive API (log in with `POST /api/auth/token/`, then *Authorize*).
-- **http://localhost:8080/admin/**: back office (`manager` account).
-- **ws://localhost:8080/ws/?token=<access token>**: live events for the logged-in role.
+- **http://localhost:8088/**: landing page (live menu and dish of the day).
+- **http://localhost:8088/api/docs/**: interactive API (log in with `POST /api/auth/token/`, then *Authorize*).
+- **http://localhost:8088/admin/**: back office (`manager` account).
+- **ws://localhost:8088/ws/?token=<access token>**: live events for the logged-in role.
 
 Demo accounts: `manager`, `reservations`, `chef`, `waiter`, `cashier`, `driver`, `parking`, `stock`, `client`, all with the password `demo-resto-2026`.
 

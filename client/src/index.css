@@ -190,3 +190,9 @@ p { margin: 0; text-wrap: pretty; }
 /* Role space page heading */
 .page-intro { display: grid; gap: var(--space-2); margin-bottom: var(--space-8); }
 .page-intro h1 { font-size: var(--text-3xl); }
+
+/* Staff work pages: full-width layout, client line with tap-to-call */
+.desk { width: min(100% - 2 * var(--gutter), var(--container)); margin-inline: auto; padding-block: var(--space-12) var(--space-24); }
+.desk-client { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.desk-client a { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--color-gold); font-size: var(--text-sm); }
+.inline-icon { display: inline; vertical-align: -2px; }

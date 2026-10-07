@@ -2,8 +2,8 @@ import { MotionConfig } from 'motion/react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import './index.css'  // first: shared tokens and blocks, so page styles can refine them
 import App from './App'
-import './index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

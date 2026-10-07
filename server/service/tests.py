@@ -398,6 +398,31 @@ class RealtimeTests(APITransactionTestCase):
         self.assertEqual((opened['event'], created['event']), ('seance_opened', 'order_created'))
         self.assertEqual(created['payload']['id'], Order.objects.get().pk)
 
+    def test_parking_attendant_hears_about_vehicle_reservations_only(self):
+        attendant = User.objects.create_user(username='parking', password='x', role=R.PARKING_ATTENDANT)
+        client = User.objects.create_user(username='client', password='x', role=R.CLIENT)
+        RestaurantTable.objects.create(number=1, capacity=4)
+        RestaurantTable.objects.create(number=2, capacity=4)
+        self.client.force_authenticate(client)
+        when = (timezone.now() + timedelta(days=1)).isoformat()
+
+        async def scenario():
+            ws = WebsocketCommunicator(NotificationConsumer.as_asgi(), '/ws/')
+            ws.scope['user'] = attendant
+            self.assertTrue((await ws.connect())[0])
+            post = sync_to_async(self.client.post)
+            walk = (await post('/api/reservations/', {'reservation_time': when, 'guest_count': 2}, format='json')).json()
+            car = (await post('/api/reservations/', {'reservation_time': when, 'guest_count': 2, 'has_vehicle': True},
+                              format='json')).json()
+            await post(f'/api/reservations/{walk["id"]}/cancel/')
+            await post(f'/api/reservations/{car["id"]}/cancel/')
+            events = [(await ws.receive_json_from(timeout=5))['event'] for _ in range(2)]
+            self.assertTrue(await ws.receive_nothing(timeout=0.5))
+            await ws.disconnect()
+            return events
+
+        self.assertEqual(async_to_sync(scenario)(), ['parking_requested', 'reservation_cancelled'])
+
     def test_socket_auth_via_jwt_query_token(self):
         from rest_framework_simplejwt.tokens import AccessToken
 

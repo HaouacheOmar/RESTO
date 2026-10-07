@@ -1,11 +1,7 @@
 /* Reservation desk. Shared blocks (cards, badges, tabs, fields) live in src/index.css. */
-.desk { width: min(100% - 2 * var(--gutter), var(--container)); margin-inline: auto; padding-block: var(--space-12) var(--space-24); }
 
 .desk-card.is-late { border-left: 3px solid var(--color-danger); }
-.desk-client { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
-.desk-client a { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--color-gold); font-size: var(--text-sm); }
 .desk-late { color: var(--color-danger); font-size: var(--text-sm); font-weight: 600; }
-.inline-icon { display: inline; vertical-align: -2px; }
 
 .desk-panel { display: grid; gap: var(--space-4); margin-top: var(--space-2); padding: var(--space-4); background: var(--color-cream); }
 .desk-guests { max-width: 12rem; }

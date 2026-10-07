@@ -80,6 +80,8 @@ class ReservationViewSet(RoleViewSet):
         data = self.get_serializer(reservation).data
         broadcast(f'user_{reservation.client_id}', event, data)
         broadcast('reservations', event, data)
+        if reservation.has_vehicle:  # the parking attendant follows these too (a cancellation frees a spot)
+            broadcast('parking', event, data)
         return Response(data)
 
     def _set(self, reservation, event, **fields):

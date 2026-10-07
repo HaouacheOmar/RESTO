@@ -1,4 +1,4 @@
-# Whole stack: docker compose up --build  →  http://localhost:8080
+# Whole stack: docker compose up --build  →  http://localhost:8088
 services:
   postgres:
     image: postgres:17
@@ -41,7 +41,7 @@ services:
 
   web:
     build: ./client
-    ports: ["8080:80"]
+    ports: ["8088:80"]
     depends_on: [backend]
 
 volumes:
