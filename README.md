@@ -32,30 +32,38 @@ A distributed restaurant management system. Every role in the restaurant (manage
 | Real time | Django Channels, Daphne, Redis |
 | Database | PostgreSQL 17 (business rules enforced with constraints and row locks) |
 | Docs | OpenAPI 3 / Swagger UI (drf-spectacular) |
-| CI | GitHub Actions (tests + schema validation) |
+| Frontend | React 19, TypeScript, Vite, Motion; served by nginx |
+| CI | GitHub Actions (tests, schema validation, Docker builds) |
 
 ## Quick start
 
-Requires Python 3.12 and Docker.
+Requires Docker only.
 
 ```bash
-cd server
-docker compose up -d                       # PostgreSQL :5434, Redis :6380
-python -m venv ../venv && source ../venv/bin/activate   # Windows: ..\venv\Scripts\activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py seed_demo                 # demo restaurant, one account per role
-python manage.py runserver
+docker compose up --build
 ```
 
-Then open:
-- **http://localhost:8000/api/docs/**: interactive API (log in with `POST /api/auth/token/`, then *Authorize*).
-- **http://localhost:8000/admin/**: back office (`manager` account).
-- **ws://localhost:8000/ws/?token=<access token>**: live events for the logged-in role.
+Then open **http://localhost:8080**. The stack starts PostgreSQL, Redis, the Django/Daphne backend (migrations and demo data applied on startup) and the React frontend served by nginx, which also proxies the API, the admin and the WebSockets on the same origin.
 
-Demo accounts: `manager`, `reservations`, `chef`, `waiter`, `cashier`, `driver`, `parking`, `stock`, `client`; the password is printed by `seed_demo`.
+- **http://localhost:8080/**: landing page (live menu and dish of the day).
+- **http://localhost:8080/api/docs/**: interactive API (log in with `POST /api/auth/token/`, then *Authorize*).
+- **http://localhost:8080/admin/**: back office (`manager` account).
+- **ws://localhost:8080/ws/?token=<access token>**: live events for the logged-in role.
 
-Run the tests (PostgreSQL and Redis must be up): `python manage.py test`.
+Demo accounts: `manager`, `reservations`, `chef`, `waiter`, `cashier`, `driver`, `parking`, `stock`, `client`, all with the password `demo-resto-2026`.
+
+### Developing without rebuilding images
+
+```bash
+docker compose up -d postgres redis        # PostgreSQL :5434, Redis :6380
+cd server && python -m venv ../venv && source ../venv/bin/activate   # Windows: ..\venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate && python manage.py seed_demo
+python manage.py runserver                 # API on :8000
+cd ../client && npm install && npm run dev # app on :5173, proxied to the API
+```
+
+Run the backend tests (PostgreSQL and Redis up): `cd server && python manage.py test`.
 
 ## Documentation
 
@@ -63,6 +71,7 @@ Run the tests (PostgreSQL and Redis must be up): `python manage.py test`.
 - [`docs/PRD.md`](docs/PRD.md): roles and use cases.
 - [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md): architecture, endpoints, WebSocket events, key rules.
 - [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md): data model and constraints.
+- [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md): visual identity, components and motion rules for the frontend.
 
 The specs are written in French, like the restaurant's vocabulary.
 

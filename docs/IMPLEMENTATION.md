@@ -14,7 +14,7 @@
 | Back-office | Django admin (tous les modèles) |
 | Frontend | À venir (`client/`) |
 
-PostgreSQL et Redis tournent dans `server/docker-compose.yml` (ports hôte 5434 et 6380). L'application tourne dans le `venv/` à la racine.
+Tout se lance avec `docker compose up --build` à la racine (`docker-compose.yml`) : PostgreSQL, Redis, le backend (Daphne) et le frontend React servi par nginx sur **http://localhost:8080**. nginx sert l'application et relaie `/api`, `/admin`, `/static`, `/media` et `/ws` vers Django : tout est sur la même origine. En développement, PostgreSQL et Redis seuls (`docker compose up -d postgres redis`, ports hôte 5434 et 6380) et Django dans le `venv/` à la racine.
 
 ---
 
@@ -113,7 +113,10 @@ Les envois passent par `service.events.broadcast`, qui attend `transaction.on_co
 ## 7. Lancer et tester (depuis `server/`)
 
 ```bash
-docker compose up -d
+docker compose up --build                              # depuis la racine : toute la pile sur http://localhost:8080
+
+# ou, pour développer le backend :
+docker compose up -d postgres redis
 ../venv/Scripts/python.exe -m pip install -r requirements.txt
 ../venv/Scripts/python.exe manage.py migrate
 ../venv/Scripts/python.exe manage.py seed_demo         # restaurant de démo : un compte par rôle, tables, Carte, Plat du jour
