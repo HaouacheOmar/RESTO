@@ -105,7 +105,8 @@ Les envois passent par `service.events.broadcast`, qui attend `transaction.on_co
 5. **Plat disponible** : `Dish.objects.orderable()` = `is_available` et aucun ingrédient de la Recette en Rupture. Le Plat du jour n'est commandable que le jour de sa date et s'il n'a pas été retiré.
 6. **Avis** : validé contre l'Addition (appartient au client, payée depuis moins de 7 jours, la cible en fait partie). L'unicité par cible et par Addition est garantie en base (`UNIQUE … NULLS NOT DISTINCT`).
 7. **Prix figés** : `OrderItem.unit_price` copie le prix au moment de la commande ; les totaux sont calculés côté serveur.
-8. **Formulaires multipart** (upload de photo) : `is_available` vaut `True` par défaut, sinon DRF lit une case absente comme `False`.
+8. **Fuseau horaire** : `TIME_ZONE` (par défaut `Africa/Algiers`). Les dates sont stockées en UTC, mais le Plat du jour change à minuit heure locale et le chiffre d'affaires est groupé par jour local.
+9. **Formulaires multipart** (upload de photo) : `is_available` vaut `True` par défaut, sinon DRF lit une case absente comme `False`.
 
 ---
 

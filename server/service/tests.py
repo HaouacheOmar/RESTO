@@ -254,6 +254,17 @@ class MenuAndStockTests(RestoTestCase):
         self.assertEqual(line(daily_special=chorba['id']).status_code, 400)
 
 
+    def test_daily_special_switches_at_local_midnight(self):
+        """Algiers is UTC+1: at 23:30 UTC it is already the next day in the restaurant."""
+        from datetime import datetime, timezone as dt_timezone
+        from unittest import mock
+
+        late_evening_utc = datetime(2026, 3, 9, 23, 30, tzinfo=dt_timezone.utc)
+        DailySpecial.objects.create(date='2026-03-10', name='Dobara', price=5)
+        with mock.patch('django.utils.timezone.now', return_value=late_evening_utc):
+            self.assertEqual(self.as_(None).get('/api/menu/').json()['plat_du_jour']['name'], 'Dobara')
+
+
 class ReviewTests(RestoTestCase):
     def paid_addition(self):
         _, seance = self.seated()
