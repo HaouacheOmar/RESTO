@@ -9,11 +9,13 @@ import { useAuth } from '../auth/useAuth'
 import { rise, stagger } from '../motion'
 import { useRealtime, type LiveStatus } from '../realtime'
 import ClientSpace from './client/ClientSpace'
+import DeskSpace from './desk/DeskSpace'
 import './space.css'
 
 /** Spaces already built; the other roles see the placeholder until their ticket lands. */
 const CONTENT: Partial<Record<Role, ComponentType<{ user: User }>>> = {
   CLIENT: ClientSpace,
+  RESERVATION_MANAGER: DeskSpace,
 }
 
 const STATUS_LABEL: Record<LiveStatus, string> = {

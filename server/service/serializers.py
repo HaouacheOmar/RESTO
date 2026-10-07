@@ -17,6 +17,7 @@ REVIEW_WINDOW = timedelta(days=7)
 class ReservationSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source='client.get_full_name', read_only=True)
     client_username = serializers.CharField(source='client.username', read_only=True)
+    client_phone = serializers.CharField(source='client.phone', read_only=True)
     table_number = serializers.IntegerField(source='table.number', read_only=True, default=None)
 
     class Meta:
@@ -71,11 +72,16 @@ class OrderSerializer(serializers.ModelSerializer):
     seance_name = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=100)
     table = serializers.IntegerField(source='seance.table.number', read_only=True, default=None)
     deliverer_name = serializers.CharField(source='deliverer.first_name', read_only=True, default=None)
+    client_name = serializers.SerializerMethodField()
+    client_phone = serializers.CharField(source='client.phone', read_only=True, default=None)
 
     class Meta:
         model = Order
         fields = '__all__'
         read_only_fields = ['seance', 'addition', 'client', 'server', 'deliverer', 'is_delivery', 'status', 'total']
+
+    def get_client_name(self, order) -> str | None:
+        return (order.client.get_full_name() or order.client.username) if order.client else None
 
     def validate_items(self, items):
         if not items:

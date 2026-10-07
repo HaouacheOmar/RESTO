@@ -3,7 +3,7 @@ from django.db.models import Avg, Count, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -54,6 +54,7 @@ class ReservationViewSet(RoleViewSet):
         'reassign_table': (R.RESERVATION_MANAGER,),
         'check_in': (R.RESERVATION_MANAGER,),
         'no_show': (R.RESERVATION_MANAGER,),
+        'free_tables': (R.RESERVATION_MANAGER,),
     }
 
     def get_queryset(self):
@@ -87,15 +88,37 @@ class ReservationViewSet(RoleViewSet):
         reservation.save(update_fields=list(fields))
         return self._respond(reservation, event)
 
-    def _table(self, reservation, number, guest_count, now=False):
-        """A table that fits the (possibly corrected) party, in the requested zone, free for the reservation slot."""
+    @staticmethod
+    def _candidates(reservation, guest_count, now=False):
+        """Tables that fit the (possibly corrected) party, in the requested zone, free for the reservation slot."""
         tables = Reservation.free_tables(reservation.zone, guest_count, reservation.reservation_time, exclude=reservation)
         if now:  # check-in: must also be physically free
             tables = tables.exclude(seances__status=Seance.Status.OPEN)
+        return tables
+
+    def _table(self, reservation, number, guest_count, now=False):
+        tables = self._candidates(reservation, guest_count, now)
         table = tables.filter(number=number).first() if number is not None else tables.first()
         if table is None:
             raise ValidationError({'table': 'Aucune table libre de cette zone pour ce nombre de personnes.'})
         return table
+
+    @extend_schema(parameters=[
+        OpenApiParameter('guests', int, description='Corrected party size (default: the reservation guest count).'),
+        OpenApiParameter('now', bool, description='Check-in: also exclude tables occupied right now.'),
+    ], responses=inline_serializer('FreeTable', {
+        'number': serializers.IntegerField(), 'capacity': serializers.IntegerField(), 'zone': serializers.CharField()},
+        many=True))
+    @action(detail=True)
+    def free_tables(self, request, pk=None):
+        """Tables the reservation could move to (same zone, enough seats, free for its slot)."""
+        reservation = self.get_object()
+        try:
+            guests = int(request.query_params.get('guests') or reservation.guest_count)
+        except ValueError:
+            raise ValidationError({'guests': 'Nombre invalide.'})
+        now = request.query_params.get('now') in ('1', 'true')
+        return Response(list(self._candidates(reservation, guests, now).values('number', 'capacity', 'zone')))
 
     @extend_schema(request=inline_serializer('ParkingSpot', {'parking_spot': serializers.CharField()}))
     @action(detail=True, methods=['post'])
@@ -326,6 +349,7 @@ class OrderViewSet(RoleViewSet):
         order.save(update_fields=['deliverer', 'status'])
         data = self.get_serializer(order).data
         broadcast(f'user_{deliverer.pk}', 'delivery_assigned', data)
+        broadcast('deliveries', 'delivery_assigned', data)
         broadcast(f'user_{order.client_id}', 'order_on_the_way', data)
         return Response(data)
 
@@ -349,6 +373,7 @@ class OrderViewSet(RoleViewSet):
         broadcast('manager', 'addition_paid', AdditionSerializer(addition).data)
         data = self.get_serializer(order).data
         broadcast(f'user_{order.client_id}', 'order_delivered', data)
+        broadcast('deliveries', 'order_delivered', data)  # the deliverer is available again
         return Response(data)
 
     @extend_schema(request=None)
@@ -363,6 +388,7 @@ class OrderViewSet(RoleViewSet):
         data = self.get_serializer(order).data
         broadcast('manager', 'delivery_failed', data)
         broadcast(f'user_{order.client_id}', 'delivery_failed', data)
+        broadcast('deliveries', 'delivery_failed', data)
         return Response(data)
 
 

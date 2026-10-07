@@ -14,17 +14,28 @@ const ENDPOINTS = {
   me: '/api/auth/me/',
   reservations: '/api/reservations/',
   reservationCancel: (id: number) => `/api/reservations/${id}/cancel/`,
+  reservationConfirm: (id: number) => `/api/reservations/${id}/confirm/`,
+  reservationReassign: (id: number) => `/api/reservations/${id}/reassign_table/`,
+  reservationCheckIn: (id: number) => `/api/reservations/${id}/check_in/`,
+  reservationNoShow: (id: number) => `/api/reservations/${id}/no_show/`,
+  reservationFreeTables: (id: number) => `/api/reservations/${id}/free_tables/`,
   orders: '/api/orders/',
   orderCancel: (id: number) => `/api/orders/${id}/cancel/`,
+  orderAssign: (id: number) => `/api/orders/${id}/assign_deliverer/`,
+  users: '/api/users/',
   additions: '/api/additions/',
   reviews: '/api/reviews/',
   realtime: '/ws/',
 } as const
 
 type Endpoint = Exclude<keyof typeof ENDPOINTS, 'realtime'>
-const pathOf = (endpoint: Endpoint, id?: number) => {
+export type Query = Record<string, string | number | boolean>
+
+const pathOf = (endpoint: Endpoint, id?: number, query?: Query) => {
   const path = ENDPOINTS[endpoint]
-  return typeof path === 'function' ? path(id as number) : path
+  const url = typeof path === 'function' ? path(id as number) : path
+  if (!query) return url
+  return `${url}?${new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)]))}`
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -106,6 +117,7 @@ export function toErrors(error: unknown, fallback: string): Errors {
 interface RequestOptions {
   /** For endpoints about one object, e.g. `api('orderCancel', { id: 4, method: 'POST' })`. */
   id?: number
+  query?: Query
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
   signal?: AbortSignal
@@ -113,8 +125,8 @@ interface RequestOptions {
 }
 
 /** Call the API. With `auth` (default), attaches the access token and refreshes it once on 401. */
-export async function api<T>(endpoint: Endpoint, { id, method = 'GET', body, signal, auth = true }: RequestOptions = {}): Promise<T> {
-  const send = (token: string | null) => fetch(pathOf(endpoint, id), {
+export async function api<T>(endpoint: Endpoint, { id, query, method = 'GET', body, signal, auth = true }: RequestOptions = {}): Promise<T> {
+  const send = (token: string | null) => fetch(pathOf(endpoint, id, query), {
     method,
     signal,
     headers: {
@@ -132,12 +144,13 @@ export async function api<T>(endpoint: Endpoint, { id, method = 'GET', body, sig
 }
 
 /** Load an authenticated list/object; `reload()` refetches (e.g. after a live event). */
-export function useApi<T>(endpoint: Endpoint) {
+export function useApi<T>(endpoint: Endpoint, query?: Query) {
   const [data, setData] = useState<T | null>(null)
   const [failed, setFailed] = useState(false)
-  const reload = useCallback(() => api<T>(endpoint)
+  const queryKey = query ? JSON.stringify(query) : ''
+  const reload = useCallback(() => api<T>(endpoint, { query: queryKey ? JSON.parse(queryKey) : undefined })
     .then((value) => { setData(value); setFailed(false) })
-    .catch(() => setFailed(true)), [endpoint])
+    .catch(() => setFailed(true)), [endpoint, queryKey])
   useEffect(() => { reload() }, [reload])
   return { data, failed, reload }
 }
@@ -165,6 +178,7 @@ export interface User {
   last_name: string
   role: Role
   phone: string
+  availability?: 'AVAILABLE' | 'BUSY' | 'OFFLINE'
 }
 
 export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'DONE' | 'CANCELLED' | 'NO_SHOW'
@@ -180,6 +194,15 @@ export interface Reservation {
   parking_spot: string
   table_number: number | null
   status: ReservationStatus
+  client_name: string
+  client_username: string
+  client_phone: string
+}
+
+export interface FreeTable {
+  number: number
+  capacity: number
+  zone: Zone
 }
 
 export type OrderStatus = 'PENDING' | 'PAID' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED' | 'FAILED'
@@ -200,6 +223,8 @@ export interface Order {
   status: OrderStatus
   total: string
   deliverer_name: string | null
+  client_name: string | null
+  client_phone: string | null
   created_at: string
 }
 

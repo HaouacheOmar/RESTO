@@ -58,3 +58,26 @@ export function useRealtime(enabled: boolean) {
 
   return { status, events }
 }
+
+export type Notifications = Record<string, string | ((payload: Record<string, unknown>) => string)>
+
+/**
+ * For a role space: every live event calls `refresh` (keep it stable with useCallback) and, when the
+ * event has a message in `notifications`, exposes it as a toast for 6 seconds.
+ */
+export function useLiveRefresh(refresh: () => void, notifications: Notifications) {
+  const { status, events } = useRealtime(true)
+  const latest = events[0]
+  const [dismissed, setDismissed] = useState(-1)
+
+  useEffect(() => {
+    if (!latest) return
+    refresh()
+    const timer = setTimeout(() => setDismissed(latest.id), 6000)
+    return () => clearTimeout(timer)
+  }, [latest, refresh])
+
+  const message = latest && latest.id !== dismissed ? notifications[latest.event] : undefined
+  const text = typeof message === 'function' ? message(latest!.payload) : message
+  return { status, toast: text ? { id: latest!.id, text } : null }
+}

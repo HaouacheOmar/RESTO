@@ -1,0 +1,33 @@
+/* Reservation desk. Shared blocks (cards, badges, tabs, fields) live in src/index.css. */
+.desk { width: min(100% - 2 * var(--gutter), var(--container)); margin-inline: auto; padding-block: var(--space-12) var(--space-24); }
+
+.desk-card.is-late { border-left: 3px solid var(--color-danger); }
+.desk-client { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.desk-client a { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--color-gold); font-size: var(--text-sm); }
+.desk-late { color: var(--color-danger); font-size: var(--text-sm); font-weight: 600; }
+.inline-icon { display: inline; vertical-align: -2px; }
+
+.desk-panel { display: grid; gap: var(--space-4); margin-top: var(--space-2); padding: var(--space-4); background: var(--color-cream); }
+.desk-guests { max-width: 12rem; }
+.table-picker { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.table-picker legend { font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); }
+.table-picker label {
+  position: relative; display: grid; gap: 2px; min-width: 6rem; min-height: 44px; padding: var(--space-2) var(--space-4);
+  background: #fff; border: 1px solid var(--color-border); cursor: pointer;
+}
+.table-picker label.is-selected { border-color: var(--color-gold); box-shadow: inset 0 0 0 1px var(--color-gold); }
+.table-picker label:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.table-picker input { position: absolute; opacity: 0; }
+.table-picker .muted { font-size: var(--text-xs); }
+
+.desk-deliveries { display: grid; gap: var(--space-12); align-items: start; }
+@media (min-width: 960px) { .desk-deliveries { grid-template-columns: 1fr 22rem; } }
+.desk-section-title { font-size: var(--text-xl); margin-bottom: var(--space-4); }
+.drivers { display: grid; gap: var(--space-4); }
+
+.driver-list { list-style: none; margin: 0; padding: 0; background: #fff; border: 1px solid var(--color-border); }
+.driver-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
+.driver-list li:last-child { border-bottom: 0; }
+.assign { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
+.assign select { min-height: 44px; padding: 0 var(--space-3); font: inherit; border: 1px solid var(--color-border); background: #fff; border-radius: var(--radius-sm); }
+.assign .field-error { flex-basis: 100%; }

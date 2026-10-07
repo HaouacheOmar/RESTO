@@ -92,6 +92,16 @@ class ReservationTests(RestoTestCase):
         self.assertEqual(self.post(R.RESERVATION_MANAGER, url, {'table_number': self.t6.number}).json()['table'],
                          self.t6.pk)
 
+    def test_free_tables_for_a_move_or_a_bigger_party(self):
+        res = self.reserve().json()  # 3 guests → t4 proposed
+        url = f'/api/reservations/{res["id"]}/free_tables/'
+        numbers = lambda q='': [t['number'] for t in self.as_(R.RESERVATION_MANAGER).get(url + q).json()]  # noqa: E731
+        self.assertEqual(numbers(), [self.t4.number, self.t6.number])  # same zone, enough seats; never VIP
+        self.assertEqual(numbers('?guests=5'), [self.t6.number])
+        self.order(self.t6.number, (self.tea, 1))  # a walk-in sits at t6 right now
+        self.assertEqual(numbers('?guests=5&now=1'), [])
+        self.assertEqual(self.as_(R.CLIENT).get(url).status_code, 403)
+
     def test_check_in_with_more_guests_moves_table(self):
         res, seance = self.seated(guest_count=5)
         self.assertEqual((res['guest_count'], res['table'], seance.table), (5, self.t6.pk, self.t6))

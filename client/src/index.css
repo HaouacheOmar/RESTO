@@ -170,3 +170,23 @@ p { margin: 0; text-wrap: pretty; }
 }
 .badge:is(.is-confirmed, .is-checked_in, .is-delivered, .is-delivering) { background: #e7f4ec; color: var(--color-success); }
 .badge:is(.is-cancelled, .is-no_show, .is-failed) { background: var(--color-danger-soft); color: var(--color-danger); }
+
+/* Tabs and notifications (ui/Tabs.tsx, ui/Toast.tsx) */
+.tabs { display: flex; gap: var(--space-2); overflow-x: auto; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-8); scrollbar-width: none; }
+.tabs button {
+  flex: none; min-height: 48px; padding: 0 var(--space-4); background: none; border: 0; border-bottom: 2px solid transparent;
+  font: 600 var(--text-sm) / 1 var(--font-body); color: var(--color-text-muted); cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+.tabs button:hover { color: var(--color-text); }
+.tabs button.is-active { color: var(--color-text); border-bottom-color: var(--color-gold); }
+.tab-count {
+  display: inline-grid; place-items: center; min-width: 1.4rem; height: 1.4rem; margin-left: var(--space-2); padding: 0 var(--space-1);
+  border-radius: var(--radius-pill); background: var(--color-gold); color: #fff; font-size: var(--text-xs);
+}
+.toast-region { position: fixed; inset: auto var(--gutter) var(--space-6); display: grid; justify-items: center; pointer-events: none; z-index: 60; }
+.toast { background: var(--color-ink); color: var(--color-on-dark); padding: var(--space-4) var(--space-6); box-shadow: var(--shadow-soft); max-width: 32rem; }
+
+/* Role space page heading */
+.page-intro { display: grid; gap: var(--space-2); margin-bottom: var(--space-8); }
+.page-intro h1 { font-size: var(--text-3xl); }
