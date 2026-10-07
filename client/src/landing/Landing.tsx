@@ -1,8 +1,10 @@
 import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { ArrowRight, Bike, ChefHat, Clock, Crown, MapPin, Phone } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { Link } from 'react-router'
 
 import { formatPrice, useMenu, type MenuState } from '../api'
+import { useAuth } from '../auth/useAuth'
 import { EASE, rise, stagger } from '../motion'
 import { Reveal } from '../Reveal'
 import './landing.css'
@@ -39,10 +41,21 @@ function Header() {
             {NAV.map((l) => <li key={l.href}><a href={l.href}>{l.label}</a></li>)}
           </ul>
         </nav>
-        <a href="#reserver" className="btn btn-gold header-cta">Réserver</a>
+        <div className="header-actions">
+          <AccountLink />
+          <a href="#reserver" className="btn btn-gold header-cta">Réserver</a>
+        </div>
       </div>
     </header>
   )
+}
+
+function AccountLink() {
+  const { state } = useAuth()
+  if (state.status === 'loading') return null  // session being restored: don't flash "Connexion"
+  return state.status === 'authenticated'
+    ? <Link to="/espace" className="header-account">Mon espace</Link>
+    : <Link to="/connexion" className="header-account">Connexion</Link>
 }
 
 function Hero() {
@@ -209,7 +222,7 @@ function Reserve() {
           convives, en salle ou au salon VIP.
         </motion.p>
         <motion.div variants={rise} className="hero-actions">
-          <a href="/inscription" className="btn btn-gold">Créer mon espace client</a>
+          <Link to="/inscription" className="btn btn-gold">Créer mon espace client</Link>
           <a href="tel:+213550000000" className="btn btn-ghost-light"><Phone aria-hidden="true" size={16} /> 0550 00 00 00</a>
         </motion.div>
         <motion.dl variants={rise} className="infos">
@@ -228,7 +241,7 @@ function Footer() {
       <div className="container footer-inner">
         <span className="logo">RESTO</span>
         <p>© {YEAR} RESTO · Cuisine algérienne contemporaine</p>
-        <a href="/connexion">Espace personnel</a>
+        <Link to="/espace">Espace personnel</Link>
       </div>
     </footer>
   )

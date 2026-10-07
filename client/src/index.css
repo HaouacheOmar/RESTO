@@ -15,6 +15,10 @@
   --color-border: #d6d3d1;
   --color-border-dark: rgb(250 250 249 / 0.14);
   --color-focus: #d4a64a;
+  /* Status (on light surfaces) */
+  --color-danger: #b42318;       /* 6.6:1 on white */
+  --color-danger-soft: #fdf0ee;
+  --color-success: #15803d;      /* 5.0:1 on white */
 
   /* Typography */
   --font-display: 'Playfair Display', 'Times New Roman', serif;

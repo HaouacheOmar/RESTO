@@ -40,7 +40,15 @@ Kept as generated: typography (Playfair Display SC + Karla, "restaurant, culinar
 Rules:
 - One accent per screen area. Gold is for emphasis (eyebrow, price, italic word in a headline), never for body text.
 - Use `--color-gold` on light surfaces and `--color-champagne` on dark ones: gold on ink fails contrast (3.5:1).
-- Status colours (success / warning / danger) for the staff spaces will be added here when the first dashboard needs them.
+- Status colours, for light surfaces only:
+
+| Token | Value | Use | Contrast |
+| :--- | :--- | :--- | :--- |
+| `--color-danger` | `#B42318` | Field and form errors, offline state | 6.6:1 on white |
+| `--color-danger-soft` | `#FDF0EE` | Background of a form-level error | — |
+| `--color-success` | `#15803D` | "Live" connection state, confirmations | 5.0:1 on white |
+
+  Never rely on colour alone: an error always has text, a status always has a label.
 
 ## 3. Typography
 

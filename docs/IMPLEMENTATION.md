@@ -110,7 +110,23 @@ Les envois passent par `service.events.broadcast`, qui attend `transaction.on_co
 
 ---
 
-## 7. Lancer et tester (depuis `server/`)
+## 7. Frontend (`client/`)
+
+React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md).
+
+| Route | Page |
+| :--- | :--- |
+| `/` | Landing (Carte et Plat du jour en direct) |
+| `/connexion`, `/inscription` | Connexion (tous les rôles), inscription client |
+| `/espace` | Redirige vers l'espace du rôle connecté |
+| `/espace/<slug>` | Espace d'un rôle : `client`, `reservations`, `parking`, `salle`, `caisse`, `livraison`, `chef`, `stock`, `gerant`. Un rôle n'ouvre que le sien, le gérant les ouvre tous. |
+
+- **API** : tous les chemins sont dans `src/api.ts` (`ENDPOINTS`). `api()` ajoute le JWT et, sur un 401, rafraîchit le jeton une fois puis rejoue la requête ; les rafraîchissements simultanés partagent une seule requête.
+- **Session** : jeton d'accès (5 min) en mémoire, jeton de rafraîchissement (1 jour) dans `localStorage` pour survivre à un rechargement. Limite connue : lisible en cas de XSS ; l'évolution est un cookie `httpOnly` côté backend.
+- **Temps réel** : `useRealtime()` ouvre un WebSocket par utilisateur connecté, avec un jeton fraîchement rafraîchi à chaque (re)connexion et une reconnexion progressive (1 s → 30 s). Chaque espace affiche le flux « Activité en direct ».
+- **Langue** : `LANGUAGE_CODE = 'fr'` côté Django, pour que les messages de validation (mot de passe, champs) arrivent en français dans les formulaires.
+
+## 8. Lancer et tester (depuis `server/`)
 
 ```bash
 docker compose up --build                              # depuis la racine : toute la pile sur http://localhost:8080
@@ -132,5 +148,5 @@ Les tests de `service/tests.py` sont regroupés par domaine : réservations, Sé
 
 `server/Dockerfile` construit une image qui applique les migrations puis lance Daphne sur `$PORT` (8000 par défaut). Les fichiers statiques (admin) sont servis par WhiteNoise. Avec `DEBUG=0`, `SECRET_KEY` est obligatoire, les cookies sont sécurisés et le HTTPS est détecté derrière le proxy de l'hébergeur (`X-Forwarded-Proto`). Variables : voir `server/.env.example`.
 
-## 8. Évolutions prévues
+## 9. Évolutions prévues
 Frontend, stockage des photos sur S3 ou Cloudinary, OpenAPI, CI, déploiement, flux cuisine pour le Chef, Addition partagée.
