@@ -20,7 +20,7 @@ export interface Auth {
   state: AuthState
   login: (username: string, password: string) => Promise<User>
   register: (data: Registration) => Promise<User>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 export const AuthContext = createContext<Auth | null>(null)

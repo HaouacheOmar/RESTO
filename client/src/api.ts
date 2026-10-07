@@ -9,6 +9,7 @@ const ENDPOINTS = {
   menu: '/api/menu/',
   token: '/api/auth/token/',
   refresh: '/api/auth/token/refresh/',
+  logout: '/api/auth/logout/',
   register: '/api/auth/register/',
   me: '/api/auth/me/',
   realtime: '/ws/',
@@ -17,33 +18,33 @@ const ENDPOINTS = {
 type Endpoint = Exclude<keyof typeof ENDPOINTS, 'realtime'>
 
 // ---------------------------------------------------------------------------------------------
-// Session: the short-lived access token (5 min) lives in memory only; the refresh token (1 day)
-// is kept in localStorage so a reload keeps you logged in.
-// Note: localStorage is readable by any script on the page (XSS). Moving the refresh token to an
-// httpOnly cookie needs backend support and is the upgrade path.
+// Session: the access token (5 min) lives in memory only. The refresh token (1 day) is an httpOnly
+// cookie set by the backend and sent only to /api/auth/: JavaScript can never read it.
+// localStorage only keeps a non-secret "a session exists" flag, so anonymous visitors don't fire a
+// refresh request that is bound to fail.
 // ---------------------------------------------------------------------------------------------
-const REFRESH_KEY = 'resto.refresh'
+const HINT_KEY = 'resto.session'
 let access: string | null = null
 let refreshing: Promise<string | null> | null = null
 const expiredListeners = new Set<() => void>()
 
-const storage = {
-  get: () => { try { return localStorage.getItem(REFRESH_KEY) } catch { return null } },
-  set: (v: string) => { try { localStorage.setItem(REFRESH_KEY, v) } catch { /* private mode: session lasts the tab */ } },
-  clear: () => { try { localStorage.removeItem(REFRESH_KEY) } catch { /* nothing stored */ } },
+const hint = {
+  get: () => { try { return localStorage.getItem(HINT_KEY) === '1' } catch { return true } },
+  set: () => { try { localStorage.setItem(HINT_KEY, '1') } catch { /* private mode */ } },
+  clear: () => { try { localStorage.removeItem(HINT_KEY) } catch { /* nothing stored */ } },
 }
 
 export const session = {
-  hasRefresh: () => storage.get() !== null,
-  start(tokens: { access: string; refresh: string }) {
-    access = tokens.access
-    storage.set(tokens.refresh)
+  hasRefresh: hint.get,
+  start(accessToken: string) {
+    access = accessToken
+    hint.set()
   },
   end() {
     access = null
-    storage.clear()
+    hint.clear()
   },
-  /** Called when the refresh token is rejected (expired or revoked). */
+  /** Called when the refresh cookie is rejected (expired or revoked). */
   onExpired(listener: () => void) {
     expiredListeners.add(listener)
     return () => { expiredListeners.delete(listener) }
@@ -53,11 +54,8 @@ export const session = {
 /** Get a new access token. Concurrent callers share one request. */
 export function refreshAccess(): Promise<string | null> {
   refreshing ??= (async () => {
-    const refresh = storage.get()
-    if (!refresh) return null
-    const res = await fetch(ENDPOINTS.refresh, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh }),
-    }).catch(() => null)
+    if (!hint.get()) return null
+    const res = await fetch(ENDPOINTS.refresh, { method: 'POST' }).catch(() => null)  // cookie sent by the browser
     if (res === null) return null  // offline: keep the session, the caller fails and can retry
     if (!res.ok) {
       session.end()

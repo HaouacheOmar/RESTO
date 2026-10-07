@@ -55,7 +55,8 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 
 | Endpoint | Accès | Rôle |
 | :--- | :--- | :--- |
-| `POST auth/register/`, `auth/token/`, `auth/token/refresh/` | public | Inscription client, JWT |
+| `POST auth/register/` | public | Inscription client |
+| `POST auth/token/`, `auth/token/refresh/`, `auth/logout/` | public | Connexion (jeton d'accès dans la réponse, jeton de rafraîchissement en cookie `httpOnly`), rafraîchissement par le cookie, déconnexion (révocation) |
 | `GET auth/me/` | connecté | Profil |
 | `users/` (`?role=&availability=`) | gérant (lecture : + responsable) | Personnel, livreurs disponibles |
 | `job-applications/` + `accept/`, `reject/` | dépôt public, reste gérant | Candidatures |
@@ -73,7 +74,7 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | `reviews/` | client, gérant | Avis |
 | `GET dashboard/` | gérant | Statistiques |
 
-Documentation interactive : **`/api/docs/`** (Swagger UI, bouton *Authorize* avec le JWT) et schéma OpenAPI 3 sur `/api/schema/`. La CI échoue si le schéma produit un avertissement.
+Documentation interactive : **`/api/docs/`** (Swagger UI, bouton *Authorize* avec le jeton d'accès) et schéma OpenAPI 3 sur `/api/schema/`. La CI échoue si le schéma produit un avertissement.
 
 Une ligne de commande porte **soit** `dish` (Carte), **soit** `daily_special` (Plat du jour). Une commande en salle se crée avec `table_number` (+ `seance_name` facultatif pour un client sans réservation) ; une livraison avec `delivery_address`.
 
@@ -122,7 +123,7 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 | `/espace/<slug>` | Espace d'un rôle : `client`, `reservations`, `parking`, `salle`, `caisse`, `livraison`, `chef`, `stock`, `gerant`. Un rôle n'ouvre que le sien, le gérant les ouvre tous. |
 
 - **API** : tous les chemins sont dans `src/api.ts` (`ENDPOINTS`). `api()` ajoute le JWT et, sur un 401, rafraîchit le jeton une fois puis rejoue la requête ; les rafraîchissements simultanés partagent une seule requête.
-- **Session** : jeton d'accès (5 min) en mémoire, jeton de rafraîchissement (1 jour) dans `localStorage` pour survivre à un rechargement. Limite connue : lisible en cas de XSS ; l'évolution est un cookie `httpOnly` côté backend.
+- **Session** : le jeton d'accès (5 min) reste en mémoire. Le jeton de rafraîchissement (1 jour) n'est jamais exposé au JavaScript : la connexion le pose dans un cookie `httpOnly`, `SameSite=Strict`, `Secure` en production, limité au chemin `/api/auth/`. `auth/token/refresh/` le lit dans ce cookie ; `auth/logout/` le révoque (liste noire SimpleJWT) et supprime le cookie, donc un jeton volé ne sert plus après la déconnexion. `localStorage` ne garde qu'un indicateur non secret « une session existe », pour éviter un rafraîchissement inutile aux visiteurs anonymes.
 - **Temps réel** : `useRealtime()` ouvre un WebSocket par utilisateur connecté, avec un jeton fraîchement rafraîchi à chaque (re)connexion et une reconnexion progressive (1 s → 30 s). Chaque espace affiche le flux « Activité en direct ».
 - **Langue** : `LANGUAGE_CODE = 'fr'` côté Django, pour que les messages de validation (mot de passe, champs) arrivent en français dans les formulaires.
 

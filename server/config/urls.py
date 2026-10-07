@@ -4,7 +4,6 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from accounts import views as accounts
 from catalog import views as catalog
@@ -27,8 +26,9 @@ router.register('reviews', service.ReviewViewSet, basename='review')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/token/', TokenObtainPairView.as_view()),
-    path('api/auth/token/refresh/', TokenRefreshView.as_view()),
+    path('api/auth/token/', accounts.LoginView.as_view()),
+    path('api/auth/token/refresh/', accounts.RefreshView.as_view()),
+    path('api/auth/logout/', accounts.LogoutView.as_view()),
     path('api/auth/register/', accounts.RegisterView.as_view()),
     path('api/auth/me/', accounts.MeView.as_view()),
     path('api/menu/', catalog.MenuView.as_view()),

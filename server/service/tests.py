@@ -322,6 +322,28 @@ class AccountTests(RestoTestCase):
         self.assertEqual(self.post(None, '/api/job-applications/', apply).status_code, 400)  # now an account
 
 
+class AuthCookieTests(APITestCase):
+    def test_refresh_token_only_in_httponly_cookie_and_revoked_on_logout(self):
+        User.objects.create_user(username='amel', password='S3cure-pass!', role=R.CLIENT)
+        login = self.client.post('/api/auth/token/', {'username': 'amel', 'password': 'S3cure-pass!'})
+        self.assertEqual(set(login.json()), {'access'})  # never in the body
+        cookie = login.cookies['resto_refresh']
+        self.assertTrue(cookie['httponly'])
+        self.assertEqual((cookie['samesite'], cookie['path']), ('Strict', '/api/auth/'))
+
+        self.assertIn('access', self.client.post('/api/auth/token/refresh/').json())
+        stolen = cookie.value
+        self.assertEqual(self.client.post('/api/auth/logout/').status_code, 204)
+        self.assertEqual(self.client.post('/api/auth/token/refresh/').status_code, 401)  # cookie gone
+        self.client.cookies['resto_refresh'] = stolen
+        self.assertEqual(self.client.post('/api/auth/token/refresh/').status_code, 401)  # revoked
+
+    def test_wrong_password_sets_no_cookie(self):
+        response = self.client.post('/api/auth/token/', {'username': 'nobody', 'password': 'x'})
+        self.assertEqual(response.status_code, 401)
+        self.assertNotIn('resto_refresh', response.cookies)
+
+
 class SeedDemoTests(APITestCase):
     def test_seed_is_idempotent_and_usable(self):
         from io import StringIO

@@ -19,10 +19,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (username: string, password: string) => {
-    const tokens = await api<{ access: string; refresh: string }>('token', {
+    const { access } = await api<{ access: string }>('token', {
       method: 'POST', body: { username, password }, auth: false,
     })
-    session.start(tokens)
+    session.start(access)  // the refresh token arrived as an httpOnly cookie
     const user = await api<User>('me')
     setState({ status: 'authenticated', user })
     return user
@@ -33,7 +33,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return login(data.username, data.password)
   }, [login])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await api('logout', { method: 'POST', auth: false }).catch(() => null)  // revokes the token, clears the cookie
     session.end()
     setState({ status: 'anonymous' })
   }, [])

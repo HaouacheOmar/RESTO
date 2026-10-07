@@ -1,13 +1,81 @@
+from django.conf import settings
 from django.db import transaction
-from drf_spectacular.utils import extend_schema
-from rest_framework import generics, permissions
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import generics, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.settings import api_settings as jwt_settings
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import JobApplication, User
 from .permissions import PUBLIC, RoleViewSet
 from .serializers import JobApplicationSerializer, RegisterSerializer, UserSerializer
+
+
+# The refresh token never reaches JavaScript: it lives in an httpOnly cookie only sent to /api/auth/.
+REFRESH_COOKIE = 'resto_refresh'
+COOKIE_PATH = '/api/auth/'
+AccessOnly = inline_serializer('AccessToken', {'access': serializers.CharField()})
+
+
+def _set_refresh_cookie(response, refresh):
+    response.set_cookie(
+        REFRESH_COOKIE, refresh, max_age=int(jwt_settings.REFRESH_TOKEN_LIFETIME.total_seconds()),
+        httponly=True, secure=not settings.DEBUG, samesite='Strict', path=COOKIE_PATH,
+    )
+
+
+class LoginView(TokenObtainPairView):
+    """Returns the access token in the body and sets the refresh token as an httpOnly cookie."""
+
+    @extend_schema(responses=AccessOnly)
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        _set_refresh_cookie(response, response.data.pop('refresh'))
+        return response
+
+
+class RefreshView(APIView):
+    """New access token from the refresh cookie (no body). 401 when the cookie is missing, expired or revoked."""
+    # JWT only: gives errors a WWW-Authenticate header (so a real 401, not 403) and no session/CSRF coupling.
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(request=None, responses=AccessOnly)
+    def post(self, request):
+        token = request.COOKIES.get(REFRESH_COOKIE)
+        if not token:
+            raise InvalidToken('Aucune session.')
+        serializer = TokenRefreshSerializer(data={'refresh': token})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as error:
+            raise InvalidToken(error.args[0])
+        return Response({'access': serializer.validated_data['access']})
+
+
+class LogoutView(APIView):
+    """Revokes the refresh token (blacklist) and deletes the cookie."""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(request=None, responses={204: None})
+    def post(self, request):
+        token = request.COOKIES.get(REFRESH_COOKIE)
+        if token:
+            try:
+                RefreshToken(token).blacklist()
+            except TokenError:
+                pass  # already expired or revoked
+        response = Response(status=204)
+        response.delete_cookie(REFRESH_COOKIE, path=COOKIE_PATH, samesite='Strict')
+        return response
 
 
 class RegisterView(generics.CreateAPIView):
