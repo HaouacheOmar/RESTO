@@ -37,3 +37,9 @@ jobs:
       - run: python manage.py makemigrations --check --dry-run
       - run: python manage.py spectacular --validate --fail-on-warn --file /dev/null
       - run: python manage.py test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t resto-api server

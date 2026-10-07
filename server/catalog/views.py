@@ -40,7 +40,6 @@ class RestaurantTableViewSet(RoleViewSet):
 
 
 class DishViewSet(RoleViewSet):
-    """The Carte. Public read; `?orderable=1` keeps only Plats disponibles."""
     serializer_class = DishSerializer
     read_roles = PUBLIC
 
@@ -50,7 +49,6 @@ class DishViewSet(RoleViewSet):
 
 
 class DailySpecialViewSet(RoleViewSet):
-    """Plat du jour: the Chef creates one per date and withdraws it (`is_available=false`) when sold out."""
     queryset = DailySpecial.objects.all()
     serializer_class = DailySpecialSerializer
     read_roles = PUBLIC
@@ -58,7 +56,6 @@ class DailySpecialViewSet(RoleViewSet):
 
 
 class MenuView(APIView):
-    """Menu = what can be ordered today: orderable Carte dishes + today's Plat du jour."""
     permission_classes = [AllowAny]
 
     @extend_schema(responses=inline_serializer('Menu', {
@@ -73,7 +70,6 @@ class MenuView(APIView):
 
 
 class IngredientViewSet(RoleViewSet):
-    """Only the stock manager starts and ends a Rupture (`is_out_of_stock`)."""
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     read_roles = write_roles = (R.STOCK_MANAGER,)
@@ -86,7 +82,6 @@ class IngredientViewSet(RoleViewSet):
 
 
 class StockRequestViewSet(RoleViewSet):
-    """Stock manager files Demandes de réapprovisionnement; the manager approves (choosing a supplier), then fulfils."""
     queryset = StockRequest.objects.select_related('ingredient')
     serializer_class = StockRequestSerializer
     http_method_names = ['get', 'post']

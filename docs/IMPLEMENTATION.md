@@ -125,5 +125,9 @@ Les tests de `service/tests.py` sont regroupés par domaine : réservations, Sé
 
 ---
 
+### Image de production
+
+`server/Dockerfile` construit une image qui applique les migrations puis lance Daphne sur `$PORT` (8000 par défaut). Les fichiers statiques (admin) sont servis par WhiteNoise. Avec `DEBUG=0`, `SECRET_KEY` est obligatoire, les cookies sont sécurisés et le HTTPS est détecté derrière le proxy de l'hébergeur (`X-Forwarded-Proto`). Variables : voir `server/.env.example`.
+
 ## 8. Évolutions prévues
 Frontend, stockage des photos sur S3 ou Cloudinary, OpenAPI, CI, déploiement, flux cuisine pour le Chef, Addition partagée.

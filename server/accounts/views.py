@@ -23,7 +23,6 @@ class MeView(generics.RetrieveAPIView):
 
 
 class UserViewSet(RoleViewSet):
-    """Manager creates staff accounts. The reservation manager may read (to pick an available deliverer)."""
     serializer_class = UserSerializer
     read_roles = (User.Role.RESERVATION_MANAGER,)
 
@@ -36,7 +35,6 @@ class UserViewSet(RoleViewSet):
 
 
 class JobApplicationViewSet(RoleViewSet):
-    """Deliverer / parking attendant candidates apply publicly; the manager accepts or rejects."""
     queryset = JobApplication.objects.order_by('-created_at')
     serializer_class = JobApplicationSerializer
     http_method_names = ['get', 'post', 'delete']
