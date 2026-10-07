@@ -35,6 +35,11 @@ class RolePermissionMixin:
     write_roles = ()
     action_roles = {}
 
+    @property
+    def role(self):
+        """Current user's role; None for anonymous requests (e.g. OpenAPI schema generation)."""
+        return getattr(self.request.user, 'role', None)
+
     def get_permissions(self):
         if self.action in self.action_roles:
             roles = self.action_roles[self.action]

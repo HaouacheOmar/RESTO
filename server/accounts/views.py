@@ -1,4 +1,5 @@
 from django.db import transaction
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -47,6 +48,7 @@ class JobApplicationViewSet(RoleViewSet):
             raise ValidationError('Candidature déjà traitée.')
         return application
 
+    @extend_schema(request=None, responses=UserSerializer)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def accept(self, request, pk=None):
@@ -62,6 +64,7 @@ class JobApplicationViewSet(RoleViewSet):
         application.save()
         return Response(UserSerializer(user).data)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         application = self._pending()

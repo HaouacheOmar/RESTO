@@ -127,7 +127,7 @@ class SeanceSerializer(serializers.ModelSerializer):
         model = Seance
         fields = '__all__'
 
-    def get_total_due(self, seance):
+    def get_total_due(self, seance) -> str:
         return str(sum((o.total for o in seance.orders.all() if o.status == Order.Status.PENDING), Decimal(0)))
 
 

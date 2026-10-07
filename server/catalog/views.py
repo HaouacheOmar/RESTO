@@ -1,6 +1,8 @@
 from django.db import transaction
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
@@ -59,6 +61,8 @@ class MenuView(APIView):
     """Menu = what can be ordered today: orderable Carte dishes + today's Plat du jour."""
     permission_classes = [AllowAny]
 
+    @extend_schema(responses=inline_serializer('Menu', {
+        'carte': DishSerializer(many=True), 'plat_du_jour': DailySpecialSerializer(allow_null=True)}))
     def get(self, request):
         special = todays_special()
         return Response({
@@ -102,6 +106,7 @@ class StockRequestViewSet(RoleViewSet):
         stock_request.save()
         return Response(self.get_serializer(stock_request).data)
 
+    @extend_schema(request=inline_serializer('SupplierChoice', {'supplier': serializers.IntegerField()}))
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def approve(self, request, pk=None):
@@ -111,6 +116,7 @@ class StockRequestViewSet(RoleViewSet):
             raise ValidationError({'supplier': 'Choisir un fournisseur d’ingrédients.'})
         return self._move(StockRequest.Status.PENDING, StockRequest.Status.APPROVED, supplier=supplier)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def fulfill(self, request, pk=None):

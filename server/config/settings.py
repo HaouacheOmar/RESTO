@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'channels',
+    'drf_spectacular',
     'accounts',
     'catalog',
     'service',
@@ -139,6 +140,15 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'RESTO API',
+    'DESCRIPTION': 'Distributed restaurant management. Domain vocabulary: CONTEXT.md. '
+                   'Real-time events: ws://<host>/ws/?token=<JWT access>.',
+    'VERSION': '1.0.0',
+    'COMPONENT_SPLIT_REQUEST': True,
 }
 
 CHANNEL_LAYERS = {

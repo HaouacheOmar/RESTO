@@ -2,6 +2,9 @@ from django.db import transaction
 from django.db.models import Avg, Count, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -56,11 +59,11 @@ class ReservationViewSet(RoleViewSet):
     def get_queryset(self):
         qs = Reservation.objects.select_related('client', 'table')
         user = self.request.user
-        if user.role == R.CLIENT:
+        if self.role == R.CLIENT:
             qs = qs.filter(client=user)
-        elif user.role == R.PARKING_ATTENDANT:
+        elif self.role == R.PARKING_ATTENDANT:
             qs = qs.filter(has_vehicle=True)
-        elif user.role not in (R.ADMIN_MANAGER, R.RESERVATION_MANAGER):
+        elif self.role not in (R.ADMIN_MANAGER, R.RESERVATION_MANAGER):
             return qs.none()
         if status := self.request.query_params.get('status'):
             qs = qs.filter(status=status)
@@ -94,6 +97,7 @@ class ReservationViewSet(RoleViewSet):
             raise ValidationError({'table': 'Aucune table libre de cette zone pour ce nombre de personnes.'})
         return table
 
+    @extend_schema(request=inline_serializer('ParkingSpot', {'parking_spot': serializers.CharField()}))
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def confirm_parking(self, request, pk=None):
@@ -107,6 +111,7 @@ class ReservationViewSet(RoleViewSet):
         return self._set(reservation, 'parking_confirmed', parking_status=Reservation.Parking.SECURED,
                          parking_spot=spot)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def refuse_parking(self, request, pk=None):
@@ -115,12 +120,14 @@ class ReservationViewSet(RoleViewSet):
             raise ValidationError('Pas de demande de parking en attente.')
         return self._set(reservation, 'parking_refused', parking_status=Reservation.Parking.REFUSED)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def confirm(self, request, pk=None):
         reservation = _lock(Reservation, self.get_object().pk, RS.PENDING)
         return self._set(reservation, 'reservation_confirmed', status=RS.CONFIRMED)
 
+    @extend_schema(request=inline_serializer('TableChoice', {'table_number': serializers.IntegerField()}))
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def reassign_table(self, request, pk=None):
@@ -131,6 +138,7 @@ class ReservationViewSet(RoleViewSet):
         table = self._table(reservation, request.data['table_number'], reservation.guest_count)
         return self._set(reservation, 'table_reassigned', table=table)
 
+    @extend_schema(request=inline_serializer('CheckIn', {'guest_count': serializers.IntegerField(required=False), 'table_number': serializers.IntegerField(required=False)}))
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def check_in(self, request, pk=None):
@@ -152,6 +160,7 @@ class ReservationViewSet(RoleViewSet):
         broadcast('kitchen_pos', 'seance_opened', SeanceSerializer(seance).data)
         return self._set(reservation, 'checked_in', status=RS.CHECKED_IN, guest_count=guests, table=table)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def no_show(self, request, pk=None):
@@ -160,6 +169,7 @@ class ReservationViewSet(RoleViewSet):
             raise ValidationError('L’heure de réservation n’est pas encore passée.')
         return self._set(reservation, 'reservation_no_show', status=RS.NO_SHOW)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def cancel(self, request, pk=None):
@@ -187,6 +197,7 @@ class SeanceViewSet(ReadOnlyRoleViewSet):
             seance.reservation.save(update_fields=['status'])
         broadcast('kitchen_pos', 'seance_closed', {'seance': seance.pk, 'table_number': seance.table.number})
 
+    @extend_schema(request=inline_serializer('Payment', {'method': serializers.ChoiceField(Addition.Method.choices, required=False)}), responses=AdditionSerializer)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def pay(self, request, pk=None):
@@ -203,6 +214,7 @@ class SeanceViewSet(ReadOnlyRoleViewSet):
         broadcast('manager', 'addition_paid', data)
         return Response(data)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def close(self, request, pk=None):
@@ -222,8 +234,9 @@ class AdditionViewSet(ReadOnlyRoleViewSet):
     def get_queryset(self):
         qs = Addition.objects.prefetch_related('orders')
         user = self.request.user
-        return qs.filter(client=user) if user.role == R.CLIENT else qs
+        return qs.filter(client=user) if self.role == R.CLIENT else qs
 
+    @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True)
     def ticket(self, request, pk=None):
         addition = self.get_object()
@@ -259,11 +272,11 @@ class OrderViewSet(RoleViewSet):
         qs = Order.objects.select_related('client', 'seance__table').prefetch_related(
             'items__dish', 'items__daily_special')
         user = self.request.user
-        if user.role == R.CLIENT:
+        if self.role == R.CLIENT:
             qs = qs.filter(client=user, is_delivery=True)
-        elif user.role == R.DELIVERER:
+        elif self.role == R.DELIVERER:
             qs = qs.filter(deliverer=user)
-        elif user.role in (R.PARKING_ATTENDANT, R.STOCK_MANAGER, R.CHEF):
+        elif self.role in (R.PARKING_ATTENDANT, R.STOCK_MANAGER, R.CHEF):
             return qs.none()
         if status := self.request.query_params.get('status'):
             qs = qs.filter(status=status)
@@ -280,6 +293,7 @@ class OrderViewSet(RoleViewSet):
     def _deliverer_back(self, order):
         User.objects.filter(pk=order.deliverer_id).update(availability=User.Availability.AVAILABLE)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def cancel(self, request, pk=None):
@@ -293,6 +307,7 @@ class OrderViewSet(RoleViewSet):
         broadcast('deliveries' if order.is_delivery else 'kitchen_pos', 'order_cancelled', data)
         return Response(data)
 
+    @extend_schema(request=inline_serializer('DelivererChoice', {'deliverer': serializers.IntegerField()}))
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def assign_deliverer(self, request, pk=None):
@@ -319,6 +334,7 @@ class OrderViewSet(RoleViewSet):
             raise PermissionDenied('Cette livraison ne vous est pas attribuée.')
         return order
 
+    @extend_schema(request=inline_serializer('DeliveryPayment', {'method': serializers.ChoiceField(Addition.Method.choices, required=False)}))
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def deliver(self, request, pk=None):
@@ -334,6 +350,7 @@ class OrderViewSet(RoleViewSet):
         broadcast(f'user_{order.client_id}', 'order_delivered', data)
         return Response(data)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def fail(self, request, pk=None):
@@ -357,7 +374,7 @@ class ReviewViewSet(RoleViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return Review.objects.filter(client=user) if user.role == R.CLIENT else Review.objects.all()
+        return Review.objects.filter(client=user) if self.role == R.CLIENT else Review.objects.all()
 
     def perform_create(self, serializer):
         serializer.save(client=self.request.user)
@@ -372,6 +389,7 @@ class DashboardView(APIView):
     """Manager statistics: revenue, best sellers, ratings, stock, incidents."""
     permission_classes = [HasRole()]
 
+    @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request):
         paid = [Order.Status.PAID, Order.Status.DELIVERED]
         return Response({

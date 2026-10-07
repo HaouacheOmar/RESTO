@@ -35,4 +35,5 @@ jobs:
           cache-dependency-path: server/requirements.txt
       - run: pip install -r requirements.txt
       - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py spectacular --validate --fail-on-warn --file /dev/null
       - run: python manage.py test

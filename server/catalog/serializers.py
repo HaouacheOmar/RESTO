@@ -26,7 +26,7 @@ class DishSerializer(serializers.ModelSerializer):
         fields = '__all__'
         extra_kwargs = {'is_available': {'default': True}}  # multipart omits booleans → DRF would read False
 
-    def get_is_orderable(self, dish):
+    def get_is_orderable(self, dish) -> bool:
         return dish.is_available and not any(i.is_out_of_stock for i in dish.ingredients.all())
 
 

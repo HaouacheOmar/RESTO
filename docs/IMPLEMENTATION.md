@@ -73,6 +73,8 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | `reviews/` | client, gérant | Avis |
 | `GET dashboard/` | gérant | Statistiques |
 
+Documentation interactive : **`/api/docs/`** (Swagger UI, bouton *Authorize* avec le JWT) et schéma OpenAPI 3 sur `/api/schema/`. La CI échoue si le schéma produit un avertissement.
+
 Une ligne de commande porte **soit** `dish` (Carte), **soit** `daily_special` (Plat du jour). Une commande en salle se crée avec `table_number` (+ `seance_name` facultatif pour un client sans réservation) ; une livraison avec `delivery_address`.
 
 ---
