@@ -1,0 +1,8 @@
+Django>=6.1,<6.2
+djangorestframework>=3.18
+djangorestframework-simplejwt>=5.5
+channels>=4.3
+channels-redis>=4.3
+daphne>=4.2
+psycopg2-binary>=2.9
+Pillow>=12
