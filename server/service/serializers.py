@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from accounts.models import User
@@ -69,6 +70,7 @@ class OrderSerializer(serializers.ModelSerializer):
     table_number = serializers.IntegerField(write_only=True, required=False)
     seance_name = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=100)
     table = serializers.IntegerField(source='seance.table.number', read_only=True, default=None)
+    deliverer_name = serializers.CharField(source='deliverer.first_name', read_only=True, default=None)
 
     class Meta:
         model = Order
@@ -131,12 +133,66 @@ class SeanceSerializer(serializers.ModelSerializer):
         return str(sum((o.total for o in seance.orders.all() if o.status == Order.Status.PENDING), Decimal(0)))
 
 
+class AdditionItemSerializer(serializers.Serializer):
+    dish = serializers.IntegerField(allow_null=True)
+    daily_special = serializers.IntegerField(allow_null=True)
+    name = serializers.CharField()
+
+
+class StaffRefSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    role = serializers.CharField()
+
+
+class ReviewRefSerializer(serializers.Serializer):
+    dish = serializers.IntegerField(allow_null=True)
+    daily_special = serializers.IntegerField(allow_null=True)
+    staff = serializers.IntegerField(allow_null=True)
+    rating = serializers.IntegerField()
+
+
 class AdditionSerializer(serializers.ModelSerializer):
+    """Also lists what the Addition contained, who served it and what was already reviewed (for Avis)."""
     orders = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    table_number = serializers.IntegerField(source='seance.table.number', read_only=True, default=None)
+    items = serializers.SerializerMethodField()
+    staff = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
+    reviewable_until = serializers.SerializerMethodField()
 
     class Meta:
         model = Addition
         fields = '__all__'
+
+    def _orders(self, addition):
+        return [o for o in addition.orders.all() if o.status != Order.Status.CANCELLED]
+
+    @extend_schema_field(AdditionItemSerializer(many=True))
+    def get_items(self, addition):
+        seen = {}
+        for order in self._orders(addition):
+            for line in order.items.all():
+                seen.setdefault((line.dish_id, line.daily_special_id), line.name)
+        return [{'dish': d, 'daily_special': s, 'name': n} for (d, s), n in seen.items()]
+
+    @extend_schema_field(StaffRefSerializer(many=True))
+    def get_staff(self, addition):
+        people = {}
+        for order in self._orders(addition):
+            for person in (order.server, order.deliverer):
+                if person:
+                    people[person.pk] = {'id': person.pk, 'name': person.get_full_name() or person.username,
+                                         'role': person.role}
+        return list(people.values())
+
+    @extend_schema_field(ReviewRefSerializer(many=True))
+    def get_reviews(self, addition):
+        return [{'dish': r.dish_id, 'daily_special': r.daily_special_id, 'staff': r.staff_id, 'rating': r.rating}
+                for r in addition.reviews.all()]
+
+    def get_reviewable_until(self, addition) -> str:
+        return (addition.created_at + REVIEW_WINDOW).isoformat()
 
 
 class ReviewSerializer(serializers.ModelSerializer):

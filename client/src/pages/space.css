@@ -18,6 +18,12 @@
   background: none; border: 1px solid var(--color-border-dark); border-radius: var(--radius-sm); cursor: pointer;
   transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
 }
+@media (max-width: 480px) {
+  .space-header-inner { gap: var(--space-4); }
+  .space-role { padding-left: var(--space-4); }
+  .space-logout { width: 44px; padding: 0; justify-content: center; }
+  .logout-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
 .space-logout:hover { color: var(--color-champagne); border-color: var(--color-champagne); }
 
 .space-main {

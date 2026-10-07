@@ -70,7 +70,7 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | `reservations/` + `confirm_parking/`, `refuse_parking/`, `confirm/`, `reassign_table/`, `check_in/`, `no_show/`, `cancel/` | client, stationneur, responsable | UC-03 / UC-04 |
 | `orders/` + `cancel/`, `assign_deliverer/`, `deliver/`, `fail/` | serveur, client, responsable, livreur | Commandes et livraisons |
 | `seances/` + `pay/`, `close/` | caissier, serveur, responsable | Séances, encaissement |
-| `additions/` + `ticket/` | caissier, client (les siennes), gérant | Paiements, ticket |
+| `additions/` + `ticket/` | caissier, client (les siennes), gérant | Paiements, ticket ; chaque Addition liste aussi ses plats, le personnel qui l'a servie et les avis déjà donnés |
 | `reviews/` | client, gérant | Avis |
 | `GET dashboard/` | gérant | Statistiques |
 
@@ -125,6 +125,8 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 - **API** : tous les chemins sont dans `src/api.ts` (`ENDPOINTS`). `api()` ajoute le JWT et, sur un 401, rafraîchit le jeton une fois puis rejoue la requête ; les rafraîchissements simultanés partagent une seule requête.
 - **Session** : le jeton d'accès (5 min) reste en mémoire. Le jeton de rafraîchissement (1 jour) n'est jamais exposé au JavaScript : la connexion le pose dans un cookie `httpOnly`, `SameSite=Strict`, `Secure` en production, limité au chemin `/api/auth/`. `auth/token/refresh/` le lit dans ce cookie ; `auth/logout/` le révoque (liste noire SimpleJWT) et supprime le cookie, donc un jeton volé ne sert plus après la déconnexion. `localStorage` ne garde qu'un indicateur non secret « une session existe », pour éviter un rafraîchissement inutile aux visiteurs anonymes.
 - **Temps réel** : `useRealtime()` ouvre un WebSocket par utilisateur connecté, avec un jeton fraîchement rafraîchi à chaque (re)connexion et une reconnexion progressive (1 s → 30 s). Chaque espace affiche le flux « Activité en direct ».
+- **Espace client** (`/espace/client?onglet=…`) : réserver (créneaux 12h–13h et 19h–21h, lundi refusé côté interface, table proposée affichée), commander en livraison (panier depuis le Menu), suivre et annuler réservations et commandes, noter les Additions (cibles issues de l'Addition, 7 jours). Chaque événement personnel (`user_<id>`) recharge les listes et s'affiche en notification.
+- **Espaces pas encore construits** : page d'attente avec la liste de ce qu'ils permettront et le flux « Activité en direct ». `CONTENT` dans `pages/SpacePage.tsx` associe un rôle à son espace dès qu'il existe.
 - **Langue** : `LANGUAGE_CODE = 'fr'` côté Django, pour que les messages de validation (mot de passe, champs) arrivent en français dans les formulaires.
 
 ## 8. Lancer et tester (depuis `server/`)

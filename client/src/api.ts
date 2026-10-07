@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 /**
  * The only place that knows the API paths; components never write `/api/...` themselves.
@@ -12,10 +12,20 @@ const ENDPOINTS = {
   logout: '/api/auth/logout/',
   register: '/api/auth/register/',
   me: '/api/auth/me/',
+  reservations: '/api/reservations/',
+  reservationCancel: (id: number) => `/api/reservations/${id}/cancel/`,
+  orders: '/api/orders/',
+  orderCancel: (id: number) => `/api/orders/${id}/cancel/`,
+  additions: '/api/additions/',
+  reviews: '/api/reviews/',
   realtime: '/ws/',
 } as const
 
 type Endpoint = Exclude<keyof typeof ENDPOINTS, 'realtime'>
+const pathOf = (endpoint: Endpoint, id?: number) => {
+  const path = ENDPOINTS[endpoint]
+  return typeof path === 'function' ? path(id as number) : path
+}
 
 // ---------------------------------------------------------------------------------------------
 // Session: the access token (5 min) lives in memory only. The refresh token (1 day) is an httpOnly
@@ -78,7 +88,24 @@ export class ApiError extends Error {
   }
 }
 
+export type Errors = Record<string, string>
+
+/** DRF errors ({field: [messages]} or {detail}) → one message per field, `form` for the rest. */
+export function toErrors(error: unknown, fallback: string): Errors {
+  if (!(error instanceof ApiError) || typeof error.data !== 'object' || error.data === null) {
+    return { form: 'Connexion au serveur impossible. Réessayez dans un instant.' }
+  }
+  const errors: Errors = {}
+  for (const [field, value] of Object.entries(error.data as Record<string, unknown>)) {
+    const message = Array.isArray(value) ? value.join(' ') : String(value)
+    errors[field === 'detail' || field === 'non_field_errors' ? 'form' : field] = message
+  }
+  return Object.keys(errors).length ? errors : { form: fallback }
+}
+
 interface RequestOptions {
+  /** For endpoints about one object, e.g. `api('orderCancel', { id: 4, method: 'POST' })`. */
+  id?: number
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
   signal?: AbortSignal
@@ -86,8 +113,8 @@ interface RequestOptions {
 }
 
 /** Call the API. With `auth` (default), attaches the access token and refreshes it once on 401. */
-export async function api<T>(endpoint: Endpoint, { method = 'GET', body, signal, auth = true }: RequestOptions = {}): Promise<T> {
-  const send = (token: string | null) => fetch(ENDPOINTS[endpoint], {
+export async function api<T>(endpoint: Endpoint, { id, method = 'GET', body, signal, auth = true }: RequestOptions = {}): Promise<T> {
+  const send = (token: string | null) => fetch(pathOf(endpoint, id), {
     method,
     signal,
     headers: {
@@ -102,6 +129,17 @@ export async function api<T>(endpoint: Endpoint, { method = 'GET', body, signal,
   const data = res.status === 204 ? null : await res.json().catch(() => null)
   if (!res.ok) throw new ApiError(res.status, data)
   return data as T
+}
+
+/** Load an authenticated list/object; `reload()` refetches (e.g. after a live event). */
+export function useApi<T>(endpoint: Endpoint) {
+  const [data, setData] = useState<T | null>(null)
+  const [failed, setFailed] = useState(false)
+  const reload = useCallback(() => api<T>(endpoint)
+    .then((value) => { setData(value); setFailed(false) })
+    .catch(() => setFailed(true)), [endpoint])
+  useEffect(() => { reload() }, [reload])
+  return { data, failed, reload }
 }
 
 /** WebSocket URL with a freshly refreshed token, or null when logged out. */
@@ -127,6 +165,60 @@ export interface User {
   last_name: string
   role: Role
   phone: string
+}
+
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'DONE' | 'CANCELLED' | 'NO_SHOW'
+export type Zone = 'STANDARD' | 'VIP'
+
+export interface Reservation {
+  id: number
+  reservation_time: string
+  guest_count: number
+  zone: Zone
+  has_vehicle: boolean
+  parking_status: '' | 'REQUESTED' | 'SECURED' | 'REFUSED'
+  parking_spot: string
+  table_number: number | null
+  status: ReservationStatus
+}
+
+export type OrderStatus = 'PENDING' | 'PAID' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED' | 'FAILED'
+
+export interface OrderLine {
+  dish: number | null
+  daily_special: number | null
+  name: string
+  quantity: number
+  unit_price: string
+}
+
+export interface Order {
+  id: number
+  items: OrderLine[]
+  is_delivery: boolean
+  delivery_address: string
+  status: OrderStatus
+  total: string
+  deliverer_name: string | null
+  created_at: string
+}
+
+export interface ReviewTarget {
+  dish: number | null
+  daily_special: number | null
+  staff: number | null
+}
+
+export interface Addition {
+  id: number
+  amount: string
+  method: 'CASH' | 'CARD'
+  created_at: string
+  table_number: number | null
+  items: { dish: number | null; daily_special: number | null; name: string }[]
+  staff: { id: number; name: string; role: Role }[]
+  reviews: (ReviewTarget & { rating: number })[]
+  reviewable_until: string
 }
 
 export interface Dish {
@@ -168,3 +260,8 @@ export function useMenu(): MenuState {
 
 const dzd = new Intl.NumberFormat('fr-DZ', { style: 'currency', currency: 'DZD', maximumFractionDigits: 0 })
 export const formatPrice = (price: string) => dzd.format(Number(price))
+
+const dateTime = new Intl.DateTimeFormat('fr-DZ', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+const dateOnly = new Intl.DateTimeFormat('fr-DZ', { day: 'numeric', month: 'long', year: 'numeric' })
+export const formatDateTime = (iso: string) => dateTime.format(new Date(iso))
+export const formatDate = (iso: string) => dateOnly.format(new Date(iso))

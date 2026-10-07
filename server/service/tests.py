@@ -283,6 +283,11 @@ class ReviewTests(RestoTestCase):
         self.assertEqual(review(staff=self.users[R.CASHIER].pk).status_code, 400)  # did not serve
         self.assertEqual(review(dish=self.couscous.pk, staff=self.users[R.SERVER].pk).status_code, 400)
 
+        mine = self.as_(R.CLIENT).get(f'/api/additions/{addition["id"]}/').json()  # what the review form needs
+        self.assertEqual([i['name'] for i in mine['items']], ['Couscous'])
+        self.assertEqual([p['id'] for p in mine['staff']], [self.users[R.SERVER].pk])
+        self.assertEqual(len(mine['reviews']), 3)
+
         dash = self.as_(R.ADMIN_MANAGER).get('/api/dashboard/').json()
         self.assertEqual(Decimal(dash['revenue_total']), Decimal('12.50'))
         self.assertEqual(dash['top_items'][0]['item'], 'Couscous')

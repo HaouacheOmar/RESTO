@@ -1,44 +1,15 @@
 import { motion } from 'motion/react'
-import { useId, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 
-import { ApiError } from '../api'
+import { ApiError, toErrors, type Errors } from '../api'
+import Field from '../Field'
 import { homeOf } from '../auth/roles'
 import { useAuth, type Registration } from '../auth/useAuth'
 import { rise, stagger } from '../motion'
 import './auth.css'
 
 const PHOTO = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1400&q=75&auto=format&fit=crop'
-
-type Errors = Record<string, string>
-
-/** DRF errors ({field: [messages]} or {detail}) → one message per field, `form` for the rest. */
-function toErrors(error: unknown, fallback: string): Errors {
-  if (!(error instanceof ApiError) || typeof error.data !== 'object' || error.data === null) {
-    return { form: 'Connexion au serveur impossible. Réessayez dans un instant.' }
-  }
-  const errors: Errors = {}
-  for (const [field, value] of Object.entries(error.data as Record<string, unknown>)) {
-    const message = Array.isArray(value) ? value.join(' ') : String(value)
-    errors[field === 'detail' || field === 'non_field_errors' ? 'form' : field] = message
-  }
-  return Object.keys(errors).length ? errors : { form: fallback }
-}
-
-function Field({ label, name, error, hint, ...input }: InputHTMLAttributes<HTMLInputElement> & {
-  label: string; name: string; error?: string; hint?: string
-}) {
-  const id = useId()
-  const described = [error && `${id}-error`, hint && `${id}-hint`].filter(Boolean).join(' ') || undefined
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <input id={id} name={name} aria-invalid={error ? true : undefined} aria-describedby={described} {...input} />
-      {hint && !error && <p id={`${id}-hint`} className="field-hint">{hint}</p>}
-      {error && <p id={`${id}-error`} className="field-error">{error}</p>}
-    </div>
-  )
-}
 
 function AuthLayout({ title, intro, children, footer }: {
   title: string; intro: string; children: ReactNode; footer: ReactNode

@@ -84,6 +84,14 @@ Buttons are Karla 600, uppercase, letter-spacing 0.08em. Body text is never belo
 | Header | Fixed; transparent over the hero, ink with blur after 80px of scroll. Logo + ≤ 4 anchor links + one gold CTA. Links collapse below 900px (CTA stays). |
 | Icons | Lucide, stroke 1.25, gold, `aria-hidden` when next to a text label. No emoji. |
 | Skeleton | Warm cream gradient block, same size as the content it replaces (no layout shift). |
+| Tabs | Underlined text tabs (gold 2px when active), `role="tablist"`, arrow keys move between tabs, active tab in the URL (`?onglet=`) so it can be linked and survives reload. Scroll horizontally on small screens. |
+| Card | White, 1px border, no shadow; head row = serif title + status badge; secondary line muted; actions at the bottom. |
+| Badge | Pill, 13px semibold. Neutral cream by default; success green for confirmed / delivered / en route; danger for cancelled / no-show / failed. Always text, never colour alone. |
+| Choice card | Radio as a selectable card (icon + title + one line), gold border when selected, focus ring on the card. |
+| Stepper | − / count / + with 44px buttons, each labelled (« Ajouter un … »). |
+| Rating | Five star radios (40×44px), filled champagne up to the choice; screen readers get « n sur 5 ». A given rating is shown read-only with an `aria-label`. |
+| Toast | Ink pill at the bottom centre, one at a time (`AnimatePresence mode="wait"`), `aria-live="polite"`, auto-dismissed after 6s. Used for live events about the user's own reservations and orders. |
+| Destructive action | Two steps: a text link reveals a danger button (« Confirmer l’annulation ») next to « Garder ». |
 
 ## 6. Imagery
 

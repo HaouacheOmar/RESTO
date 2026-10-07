@@ -232,7 +232,8 @@ class AdditionViewSet(ReadOnlyRoleViewSet):
     action_roles = {'ticket': (R.CASHIER, R.SERVER)}
 
     def get_queryset(self):
-        qs = Addition.objects.prefetch_related('orders')
+        qs = Addition.objects.select_related('seance__table').prefetch_related(
+            'orders__items__dish', 'orders__items__daily_special', 'orders__server', 'orders__deliverer', 'reviews')
         user = self.request.user
         return qs.filter(client=user) if self.role == R.CLIENT else qs
 
