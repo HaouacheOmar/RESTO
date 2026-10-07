@@ -86,7 +86,7 @@ Connexion : `ws://<hôte>/ws/?token=<JWT access>`. Un jeton absent ou invalide e
 | `kitchen_pos` | caissiers, serveurs | `seance_opened`, `order_created` (salle), `order_cancelled`, `seance_closed` |
 | `reservations` | responsables | `reservation_created`, `parking_confirmed`, `parking_refused`, `reservation_confirmed`, `table_reassigned`, `checked_in`, `reservation_no_show`, `reservation_cancelled` |
 | `parking` | stationneurs | `parking_requested` |
-| `deliveries` | livreurs, responsables | `order_created` (livraison), `order_cancelled` |
+| `deliveries` | responsables réservation (les livreurs ne reçoivent que leurs livraisons, via `user_<id>`) | `order_created` (livraison), `order_cancelled` |
 | `manager` | gérant (abonné à tous les groupes) | `addition_paid`, `delivery_failed`, `review_created`, `stock_request_created`, `rupture_started`, `rupture_ended` |
 | `user_<id>` | l'utilisateur | événements de ses réservations, `delivery_assigned`, `order_on_the_way`, `order_delivered`, `delivery_failed` |
 

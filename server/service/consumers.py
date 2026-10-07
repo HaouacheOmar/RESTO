@@ -10,7 +10,7 @@ GROUPS = {
     R.CHEF: [],
     R.SERVER: ['kitchen_pos'],
     R.CASHIER: ['kitchen_pos'],
-    R.DELIVERER: ['deliveries'],
+    R.DELIVERER: [],  # only their own deliveries, via user_<id> (matches the REST scoping)
     R.PARKING_ATTENDANT: ['parking'],
     R.STOCK_MANAGER: [],
     R.CLIENT: [],
