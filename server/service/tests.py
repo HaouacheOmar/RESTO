@@ -311,6 +311,21 @@ class AccountTests(RestoTestCase):
         self.assertEqual(self.post(None, '/api/job-applications/', apply).status_code, 400)  # now an account
 
 
+class SeedDemoTests(APITestCase):
+    def test_seed_is_idempotent_and_usable(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from .management.commands.seed_demo import PASSWORD
+        for _ in range(2):
+            call_command('seed_demo', stdout=StringIO())
+        self.assertEqual((User.objects.count(), RestaurantTable.objects.count(), Dish.objects.count()), (9, 9, 10))
+        menu = self.client.get('/api/menu/').json()
+        self.assertEqual((len(menu['carte']), menu['plat_du_jour']['name']), (10, 'Rechta au poulet'))
+        self.assertIn('access', self.client.post('/api/auth/token/', {'username': 'client', 'password': PASSWORD}).json())
+
+
 class RealtimeTests(APITransactionTestCase):
     """Channels closes "old" DB connections around consumer calls, which breaks TestCase's wrapping transaction."""
 

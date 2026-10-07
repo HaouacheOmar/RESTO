@@ -115,7 +115,7 @@ Les envois passent par `service.events.broadcast`, qui attend `transaction.on_co
 docker compose up -d
 ../venv/Scripts/python.exe -m pip install -r requirements.txt
 ../venv/Scripts/python.exe manage.py migrate
-../venv/Scripts/python.exe manage.py createsuperuser   # puis rôle ADMIN_MANAGER dans /admin
+../venv/Scripts/python.exe manage.py seed_demo         # restaurant de démo : un compte par rôle, tables, Carte, Plat du jour
 ../venv/Scripts/python.exe manage.py runserver         # HTTP + WebSocket (Daphne)
 ../venv/Scripts/python.exe manage.py test              # PostgreSQL et Redis doivent tourner
 ```
