@@ -3,7 +3,7 @@ from django.db.models import Avg, Count, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -251,6 +251,8 @@ class SeanceViewSet(ReadOnlyRoleViewSet):
         return Response(self.get_serializer(seance).data)
 
 
+@extend_schema_view(list=extend_schema(parameters=[
+    OpenApiParameter('date', OpenApiTypes.DATE, description='Only the Additions paid that day (restaurant local time).')]))
 class AdditionViewSet(ReadOnlyRoleViewSet):
     serializer_class = AdditionSerializer
     read_roles = (R.CASHIER, R.CLIENT)
@@ -260,7 +262,11 @@ class AdditionViewSet(ReadOnlyRoleViewSet):
         qs = Addition.objects.select_related('seance__table').prefetch_related(
             'orders__items__dish', 'orders__items__daily_special', 'orders__server', 'orders__deliverer', 'reviews')
         user = self.request.user
-        return qs.filter(client=user) if self.role == R.CLIENT else qs
+        if self.role == R.CLIENT:
+            qs = qs.filter(client=user)
+        if day := self.request.query_params.get('date'):  # YYYY-MM-DD, restaurant local time
+            qs = qs.filter(created_at__date=day)
+        return qs
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True)

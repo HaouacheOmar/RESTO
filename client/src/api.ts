@@ -27,6 +27,8 @@ const ENDPOINTS = {
   tables: '/api/tables/',
   seances: '/api/seances/',
   seanceClose: (id: number) => `/api/seances/${id}/close/`,
+  seancePay: (id: number) => `/api/seances/${id}/pay/`,
+  additionTicket: (id: number) => `/api/additions/${id}/ticket/`,
   users: '/api/users/',
   additions: '/api/additions/',
   reviews: '/api/reviews/',
@@ -223,6 +225,17 @@ export interface Seance {
   orders: Order[]
   total_due: string
   opened_at: string
+}
+
+/** Receipt content, as printed by the cashier. Amounts may come back as numbers. */
+export interface Ticket {
+  addition: number
+  name: string | null
+  date: string
+  table_number: number | null
+  items: { name: string; quantity: number; unit_price: string | number; subtotal: string | number }[]
+  total: string | number
+  method: 'CASH' | 'CARD'
 }
 
 export interface FreeTable {

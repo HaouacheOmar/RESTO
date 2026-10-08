@@ -71,7 +71,7 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | `GET reservations/{id}/free_tables/?guests=&now=` | responsable | Tables possibles pour un changement de table ou un check-in (même Zone, places suffisantes, libres sur le créneau ; `now=1` exclut aussi les tables occupées) |
 | `orders/` + `cancel/`, `assign_deliverer/`, `deliver/`, `fail/` | serveur, client, responsable, livreur | Commandes et livraisons |
 | `seances/` + `pay/`, `close/` | caissier, serveur, responsable | Séances, encaissement |
-| `additions/` + `ticket/` | caissier, client (les siennes), gérant | Paiements, ticket ; chaque Addition liste aussi ses plats, le personnel qui l'a servie et les avis déjà donnés |
+| `additions/` (`?date=AAAA-MM-JJ`) + `ticket/` | caissier, client (les siennes), gérant | Paiements, ticket ; chaque Addition liste aussi ses plats, le personnel qui l'a servie et les avis déjà donnés |
 | `reviews/` | client, gérant | Avis |
 | `GET dashboard/` | gérant | Statistiques |
 
@@ -129,6 +129,7 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 - **Espace client** (`/espace/client?onglet=…`) : réserver (créneaux 12h–13h et 19h–21h, lundi refusé côté interface, table proposée affichée), commander en livraison (panier depuis le Menu), suivre et annuler réservations et commandes, noter les Additions (cibles issues de l'Addition, 7 jours). Chaque événement personnel (`user_<id>`) recharge les listes et s'affiche en notification.
 - **Espace réservations** (`/espace/reservations`) : onglets Aujourd'hui / À valider / À venir / Livraisons / Historique avec compteurs ; confirmer, changer de table (tables proposées par `free_tables`), check-in avec correction du nombre de personnes, no-show une fois l'heure passée ; livraisons à attribuer, état des livreurs et livraisons en route, le tout en direct.
 - **Espace salle** (`/espace/salle?table=N`) : plan de salle par Zone (libre, occupée avec nom et montant dû, réservée bientôt) ; une table ouvre son panneau : commandes de la Séance (annulation en deux temps), nouvelle commande depuis le Menu (avec nom facultatif pour un client sans réservation), clôture d'une Séance sans commande. Check-ins et paiements arrivent en direct.
+- **Espace caisse** (`/espace/caisse`) : tables à encaisser (lignes et montant dû, en direct), encaissement en espèces ou par carte, puis ticket dans une fenêtre `<dialog>` ; l'impression (`@media print`) ne sort que le ticket, au format 80 mm. Onglet « Encaissements du jour » : totaux espèces / carte et réimpression.
 - **Espace parking** (`/espace/parking`) : demandes en attente (garder une place, avec les places déjà prises sur le créneau, ou « parking complet ») et places gardées à venir, en direct.
 - **Briques partagées** (`src/ui/`) : `Tabs` + `useTab` (onglet dans l'URL), `Toast`, `Loading`, `MenuPicker` + `menu.ts` (choix des plats avec quantités, panier) ; `useLiveRefresh(refresh, notifications)` dans `realtime.ts` recharge les données à chaque événement et traduit ceux qui comptent en notification.
 - **Espaces pas encore construits** : page d'attente avec la liste de ce qu'ils permettront et le flux « Activité en direct ». `CONTENT` dans `pages/SpacePage.tsx` associe un rôle à son espace dès qu'il existe.

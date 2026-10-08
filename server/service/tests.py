@@ -153,6 +153,9 @@ class SeanceTests(RestoTestCase):
         self.assertEqual((ticket['name'], ticket['table_number'], Decimal(ticket['total'])),
                          ('client', self.t4.number, Decimal('31.00')))
         self.assertEqual(len(ticket['items']), 2)
+        today = timezone.localdate()
+        self.assertEqual([a['id'] for a in self.as_(R.CASHIER).get(f'/api/additions/?date={today}').json()], [addition['id']])
+        self.assertEqual(self.as_(R.CASHIER).get(f'/api/additions/?date={today - timedelta(days=1)}').json(), [])
         # table free again → the next server order opens a new walk-in Séance
         self.assertNotEqual(self.order(self.t4.number, (self.tea, 1)).json()['seance'], seance.pk)
 

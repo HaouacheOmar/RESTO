@@ -91,6 +91,7 @@ Buttons are Karla 600, uppercase, letter-spacing 0.08em. Body text is never belo
 | Stepper | − / count / + with 44px buttons, each labelled (« Ajouter un … »). |
 | Rating | Five star radios (40×44px), filled champagne up to the choice; screen readers get « n sur 5 ». A given rating is shown read-only with an `aria-label`. |
 | Toast | Ink pill at the bottom centre, one at a time (`AnimatePresence mode="wait"`), `aria-live="polite"`, auto-dismissed after 6s. Used for live events about the user's own reservations and orders. |
+| Receipt | Native `<dialog>` (focus trap, Escape) showing a thermal-paper look in monospace; `@media print` hides everything else and prints only the receipt at 80 mm. |
 | Destructive action | Two steps: a text link reveals a danger button (« Confirmer l’annulation ») next to « Garder ». |
 
 ## 6. Imagery

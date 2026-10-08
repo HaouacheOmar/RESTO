@@ -12,6 +12,7 @@ import ClientSpace from './client/ClientSpace'
 import DeskSpace from './desk/DeskSpace'
 import FloorSpace from './floor/FloorSpace'
 import ParkingSpace from './parking/ParkingSpace'
+import TillSpace from './till/TillSpace'
 import './space.css'
 
 /** Spaces already built; the other roles see the placeholder until their ticket lands. */
@@ -20,6 +21,7 @@ const CONTENT: Partial<Record<Role, ComponentType<{ user: User }>>> = {
   RESERVATION_MANAGER: DeskSpace,
   PARKING_ATTENDANT: ParkingSpace,
   SERVER: FloorSpace,
+  CASHIER: TillSpace,
 }
 
 const STATUS_LABEL: Record<LiveStatus, string> = {
