@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { LogOut, Radio } from 'lucide-react'
-import type { ComponentType, ReactNode } from 'react'
+import { lazy, Suspense, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 
 import type { Role, User } from '../api'
@@ -8,24 +8,21 @@ import { canOpen, homeOf, roleOfSlug, SPACES } from '../auth/roles'
 import { useAuth } from '../auth/useAuth'
 import { rise, stagger } from '../motion'
 import { useRealtime, type LiveStatus } from '../realtime'
-import ChefSpace from './chef/ChefSpace'
-import ClientSpace from './client/ClientSpace'
-import DeskSpace from './desk/DeskSpace'
-import DriverSpace from './driver/DriverSpace'
-import FloorSpace from './floor/FloorSpace'
-import ParkingSpace from './parking/ParkingSpace'
-import TillSpace from './till/TillSpace'
 import './space.css'
 
-/** Spaces already built; the other roles see the placeholder until their ticket lands. */
-const CONTENT: Partial<Record<Role, ComponentType<{ user: User }>>> = {
-  CLIENT: ClientSpace,
-  RESERVATION_MANAGER: DeskSpace,
-  PARKING_ATTENDANT: ParkingSpace,
-  SERVER: FloorSpace,
-  CASHIER: TillSpace,
-  DELIVERER: DriverSpace,
-  CHEF: ChefSpace,
+/**
+ * Built spaces, loaded on demand: each role only downloads its own screen. Roles without one yet see the
+ * placeholder.
+ */
+const CONTENT: Partial<Record<Role, LazyExoticComponent<ComponentType<{ user: User }>>>> = {
+  CLIENT: lazy(() => import('./client/ClientSpace')),
+  RESERVATION_MANAGER: lazy(() => import('./desk/DeskSpace')),
+  PARKING_ATTENDANT: lazy(() => import('./parking/ParkingSpace')),
+  SERVER: lazy(() => import('./floor/FloorSpace')),
+  CASHIER: lazy(() => import('./till/TillSpace')),
+  DELIVERER: lazy(() => import('./driver/DriverSpace')),
+  CHEF: lazy(() => import('./chef/ChefSpace')),
+  ADMIN_MANAGER: lazy(() => import('./manager/ManagerSpace')),
 }
 
 const STATUS_LABEL: Record<LiveStatus, string> = {
@@ -76,7 +73,9 @@ function Space({ role }: { role: Role }) {
           </button>
         </div>
       </header>
-      {Content ? <Content user={state.user} /> : <Placeholder user={state.user} role={role} />}
+      {Content
+        ? <Suspense fallback={<p className="page-loading" role="status">Chargement…</p>}><Content user={state.user} /></Suspense>
+        : <Placeholder user={state.user} role={role} />}
     </div>
   )
 }

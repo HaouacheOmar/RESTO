@@ -29,6 +29,20 @@ const ENDPOINTS = {
   availability: '/api/auth/me/availability/',
   dailySpecials: '/api/daily-specials/',
   dailySpecial: (id: number) => `/api/daily-specials/${id}/`,
+  dashboard: '/api/dashboard/',
+  user: (id: number) => `/api/users/${id}/`,
+  jobApplications: '/api/job-applications/',
+  jobAccept: (id: number) => `/api/job-applications/${id}/accept/`,
+  jobReject: (id: number) => `/api/job-applications/${id}/reject/`,
+  dishes: '/api/dishes/',
+  dish: (id: number) => `/api/dishes/${id}/`,
+  ingredients: '/api/ingredients/',
+  table: (id: number) => `/api/tables/${id}/`,
+  suppliers: '/api/suppliers/',
+  supplier: (id: number) => `/api/suppliers/${id}/`,
+  stockRequests: '/api/stock-requests/',
+  stockApprove: (id: number) => `/api/stock-requests/${id}/approve/`,
+  stockFulfill: (id: number) => `/api/stock-requests/${id}/fulfill/`,
   tables: '/api/tables/',
   seances: '/api/seances/',
   seanceClose: (id: number) => `/api/seances/${id}/close/`,
@@ -126,6 +140,12 @@ export function toErrors(error: unknown, fallback: string): Errors {
   return Object.keys(errors).length ? errors : { form: fallback }
 }
 
+/** One readable message for an action that failed (form-level error first, else the first field error). */
+export function errorText(error: unknown, fallback: string) {
+  const errors = toErrors(error, fallback)
+  return errors.form ?? Object.values(errors)[0] ?? fallback
+}
+
 interface RequestOptions {
   /** For endpoints about one object, e.g. `api('orderCancel', { id: 4, method: 'POST' })`. */
   id?: number
@@ -192,6 +212,65 @@ export interface User {
   role: Role
   phone: string
   availability?: 'AVAILABLE' | 'BUSY' | 'OFFLINE'
+  is_active?: boolean
+}
+
+export interface Dashboard {
+  revenue_total: number | string
+  revenue_by_day: { day: string; total: number | string; additions: number }[]
+  orders_by_status: { status: OrderStatus; count: number }[]
+  top_items: { item: string; sold: number }[]
+  restaurant_rating: { average: number | null; count: number }
+  staff_ratings: { staff: number; staff__username: string; staff__first_name: string; staff__last_name: string; staff__role: Role; average: number; count: number }[]
+  dish_ratings: { dish: number; dish__name: string; average: number; count: number }[]
+  daily_special_ratings: { daily_special: number; daily_special__name: string; daily_special__date: string; average: number; count: number }[]
+  no_shows: number
+  failed_deliveries: number
+  ruptures: { id: number; name: string }[]
+  pending_stock_requests: number
+}
+
+export interface JobApplication {
+  id: number
+  full_name: string
+  phone: string
+  requested_role: 'DELIVERER' | 'PARKING_ATTENDANT'
+  username: string
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED'
+  created_at: string
+}
+
+export interface Ingredient {
+  id: number
+  name: string
+  quantity_in_stock: string
+  unit: string
+  is_out_of_stock: boolean
+}
+
+export interface CarteDish extends Dish {
+  is_available: boolean
+  is_orderable: boolean
+  ingredients: number[]
+}
+
+export interface Supplier {
+  id: number
+  name: string
+  category: 'EQUIPMENT' | 'INGREDIENTS'
+  contact_phone: string
+  email: string
+  address: string
+}
+
+export interface StockRequest {
+  id: number
+  ingredient: number
+  ingredient_name: string
+  quantity_requested: string
+  supplier: number | null
+  status: 'PENDING' | 'APPROVED' | 'FULFILLED'
+  created_at: string
 }
 
 export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'DONE' | 'CANCELLED' | 'NO_SHOW'

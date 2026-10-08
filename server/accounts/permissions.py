@@ -1,4 +1,6 @@
+from django.db.models import ProtectedError
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 
 from .models import User
@@ -51,7 +53,12 @@ class RolePermissionMixin:
 
 
 class RoleViewSet(RolePermissionMixin, viewsets.ModelViewSet):
-    pass
+    def perform_destroy(self, instance):
+        """Something still points at it (an order, a session, a request): a clear 400 instead of a 500."""
+        try:
+            instance.delete()
+        except ProtectedError:
+            raise ValidationError('Impossible de supprimer : cet élément est déjà utilisé. Désactivez-le plutôt.')
 
 
 class ReadOnlyRoleViewSet(RolePermissionMixin, viewsets.ReadOnlyModelViewSet):

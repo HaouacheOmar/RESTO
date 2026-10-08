@@ -438,7 +438,7 @@ class DashboardView(APIView):
             'restaurant_rating': Review.objects.filter(dish=None, daily_special=None, staff=None).aggregate(
                 average=Avg('rating'), count=Count('id')),
             'staff_ratings': _ratings(Review.objects.filter(staff__isnull=False), 'staff', 'staff__username',
-                                      'staff__role'),
+                                      'staff__first_name', 'staff__last_name', 'staff__role'),
             'dish_ratings': _ratings(Review.objects.filter(dish__isnull=False), 'dish', 'dish__name'),
             'daily_special_ratings': _ratings(Review.objects.filter(daily_special__isnull=False), 'daily_special',
                                               'daily_special__name', 'daily_special__date'),

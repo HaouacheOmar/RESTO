@@ -92,6 +92,8 @@ Buttons are Karla 600, uppercase, letter-spacing 0.08em. Body text is never belo
 | Rating | Five star radios (40×44px), filled champagne up to the choice; screen readers get « n sur 5 ». A given rating is shown read-only with an `aria-label`. |
 | Toast | Ink pill at the bottom centre, one at a time (`AnimatePresence mode="wait"`), `aria-live="polite"`, auto-dismissed after 6s. Used for live events about the user's own reservations and orders. |
 | Receipt | Native `<dialog>` (focus trap, Escape) showing a thermal-paper look in monospace; `@media print` hides everything else and prints only the receipt at 80 mm. |
+| Dashboard figures | One hero figure per view (revenue today, ≥ 40px, **sans** semibold, never the display serif), then stat tiles: label · value · optional sub-line. |
+| Charts | Single series in `--color-gold` (validated: lightness, chroma, ≥ 3:1 on white), no legend (the title names it). Columns ≤ 24px, 4px rounded data-end, 2px air, hairline grid, round ticks; the peak labelled on its cap; per-mark tooltip on hover and keyboard focus; « Voir le tableau » table view. Missing days are drawn as zero. |
 | Destructive action | Two steps: a text link reveals a danger button (« Confirmer l’annulation ») next to « Garder ». |
 
 ## 6. Imagery

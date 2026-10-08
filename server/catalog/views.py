@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Avg, Count, Exists, IntegerField, OuterRef, ProtectedError, Subquery, Sum
+from django.db.models import Avg, Count, Exists, IntegerField, OuterRef, Subquery, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -74,8 +74,8 @@ class DailySpecialViewSet(RoleViewSet):
 
     def perform_destroy(self, instance):
         try:
-            instance.delete()
-        except ProtectedError:
+            super().perform_destroy(instance)
+        except ValidationError:
             raise ValidationError('Ce plat a déjà été commandé : retirez-le du menu plutôt que de le supprimer.')
 
 

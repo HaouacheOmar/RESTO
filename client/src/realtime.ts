@@ -85,5 +85,5 @@ export function useLiveRefresh(refresh: () => void, notifications: Notifications
 
   const message = latest && latest.id !== dismissed ? notifications[latest.event] : undefined
   const text = typeof message === 'function' ? message(latest!.payload) : message
-  return { status, toast: text ? { id: latest!.id, text } : null }
+  return { status, events, toast: text ? { id: latest!.id, text } : null }
 }

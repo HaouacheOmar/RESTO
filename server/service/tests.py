@@ -341,6 +341,14 @@ class ReviewTests(RestoTestCase):
 
 
 class AccountTests(RestoTestCase):
+    def test_deleting_something_in_use_is_a_clear_400(self):
+        self.seated()
+        self.order(self.t4.number, (self.tea, 1))
+        for url in (f'/api/dishes/{self.tea.pk}/', f'/api/tables/{self.t4.pk}/'):
+            response = self.as_(R.ADMIN_MANAGER).delete(url)
+            self.assertEqual(response.status_code, 400, url)
+        self.assertEqual(self.as_(R.ADMIN_MANAGER).delete(f'/api/tables/{self.vip.pk}/').status_code, 204)  # unused
+
     def test_roles(self):
         self.assertEqual(self.as_(None).get('/api/dishes/').status_code, 200)  # public Carte
         self.assertEqual(self.as_(None).get('/api/orders/').status_code, 401)
