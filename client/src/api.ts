@@ -24,6 +24,9 @@ const ENDPOINTS = {
   orders: '/api/orders/',
   orderCancel: (id: number) => `/api/orders/${id}/cancel/`,
   orderAssign: (id: number) => `/api/orders/${id}/assign_deliverer/`,
+  tables: '/api/tables/',
+  seances: '/api/seances/',
+  seanceClose: (id: number) => `/api/seances/${id}/close/`,
   users: '/api/users/',
   additions: '/api/additions/',
   reviews: '/api/reviews/',
@@ -199,6 +202,27 @@ export interface Reservation {
   client_name: string
   client_username: string
   client_phone: string
+}
+
+export interface Table {
+  id: number
+  number: number
+  capacity: number
+  zone: Zone
+  is_occupied: boolean
+  /** A reservation not yet seated holds the table now: no walk-in possible. */
+  reserved_at: string | null
+}
+
+export interface Seance {
+  id: number
+  table_number: number
+  name: string
+  status: 'OPEN' | 'PAID' | 'CLOSED'
+  reservation: number | null
+  orders: Order[]
+  total_due: string
+  opened_at: string
 }
 
 export interface FreeTable {

@@ -1,7 +1,8 @@
-import { Minus, Plus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
 import { api, formatDateTime, formatPrice, toErrors, useMenu, type Errors, type Order } from '../../api'
+import MenuPicker from '../../ui/MenuPicker'
+import { cartLines, cartTotal, orderItems, productsOf, type Cart } from '../../ui/menu'
 
 const STATUS: Record<Order['status'], string> = {
   PENDING: 'En attente d’un livreur',
@@ -12,26 +13,18 @@ const STATUS: Record<Order['status'], string> = {
   PAID: 'Payée',
 }
 
-interface Product { key: string; dish?: number; daily_special?: number; name: string; price: string; note?: string }
-
 export function DeliveryOrder({ onOrdered }: { onOrdered: (order: Order) => Promise<void> }) {
   const menu = useMenu()
-  const [cart, setCart] = useState<Record<string, number>>({})
+  const [cart, setCart] = useState<Cart>({})
   const [errors, setErrors] = useState<Errors>({})
   const [pending, setPending] = useState(false)
 
   if (menu.status === 'loading') return <p className="empty" role="status">Chargement de la carte…</p>
   if (menu.status === 'error') return <p className="form-error" role="alert">La carte est indisponible pour le moment.</p>
 
-  const special = menu.menu.plat_du_jour
-  const products: Product[] = [
-    ...(special ? [{ key: `s${special.id}`, daily_special: special.id, name: special.name, price: special.price, note: 'Plat du jour' }] : []),
-    ...menu.menu.carte.map((d) => ({ key: `d${d.id}`, dish: d.id, name: d.name, price: d.price })),
-  ]
-  const lines = products.filter((p) => cart[p.key])
-  const total = lines.reduce((sum, p) => sum + Number(p.price) * cart[p.key], 0)
-  const change = (key: string, delta: number) =>
-    setCart((c) => ({ ...c, [key]: Math.max(0, Math.min(20, (c[key] ?? 0) + delta)) }))
+  const products = productsOf(menu.menu)
+  const lines = cartLines(products, cart)
+  const total = cartTotal(products, cart)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -44,7 +37,7 @@ export function DeliveryOrder({ onOrdered }: { onOrdered: (order: Order) => Prom
         method: 'POST',
         body: {
           delivery_address: address,
-          items: lines.map((p) => ({ dish: p.dish, daily_special: p.daily_special, quantity: cart[p.key] })),
+          items: orderItems(products, cart),
         },
       })
       setCart({})
@@ -59,26 +52,7 @@ export function DeliveryOrder({ onOrdered }: { onOrdered: (order: Order) => Prom
 
   return (
     <div className="delivery">
-      <ul className="product-list" aria-label="Carte">
-        {products.map((p) => (
-          <li key={p.key} className="product">
-            <div>
-              {p.note && <p className="eyebrow">{p.note}</p>}
-              <h3>{p.name}</h3>
-              <p className="muted">{formatPrice(p.price)}</p>
-            </div>
-            <div className="stepper" role="group" aria-label={`Quantité de ${p.name}`}>
-              <button type="button" onClick={() => change(p.key, -1)} disabled={!cart[p.key]} aria-label={`Retirer un ${p.name}`}>
-                <Minus aria-hidden="true" size={16} />
-              </button>
-              <output aria-live="polite">{cart[p.key] ?? 0}</output>
-              <button type="button" onClick={() => change(p.key, 1)} aria-label={`Ajouter un ${p.name}`}>
-                <Plus aria-hidden="true" size={16} />
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <MenuPicker products={products} cart={cart} onChange={setCart} />
 
       <form className="cart" onSubmit={submit} noValidate aria-labelledby="cart-title">
         <h3 id="cart-title">Votre commande</h3>

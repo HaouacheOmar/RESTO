@@ -166,6 +166,9 @@ class SeanceTests(RestoTestCase):
         Reservation.objects.create(client=self.client_user, table=self.t4, guest_count=3,
                                    reservation_time=timezone.now() + timedelta(minutes=30),
                                    status=Reservation.Status.CONFIRMED)
+        plan = {t['number']: t for t in self.as_(R.SERVER).get('/api/tables/').json()}
+        self.assertIsNotNone(plan[self.t4.number]['reserved_at'])  # the floor plan warns the waiter first
+        self.assertIsNone(plan[self.t2.number]['reserved_at'])
         self.assertEqual(self.order(self.t4.number, (self.tea, 1)).status_code, 400)
 
     def test_close_only_an_empty_seance(self):

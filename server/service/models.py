@@ -46,6 +46,11 @@ class Reservation(models.Model):
                                   reservation_time__lt=when + slot)
 
     @classmethod
+    def blocking_walk_ins(cls, now):
+        """Reservations not yet seated whose slot covers `now`: their table can't take a walk-in."""
+        return cls.overlapping(now).filter(status__in=[cls.Status.PENDING, cls.Status.CONFIRMED])
+
+    @classmethod
     def free_tables(cls, zone, guest_count, when, exclude=None):
         """Tables of the zone that fit the party and are not reserved for the slot, smallest first."""
         busy = cls.overlapping(when).filter(table__isnull=False)

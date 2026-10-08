@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Subquery
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from accounts.models import User
 from accounts.permissions import AUTHENTICATED, PUBLIC, RoleViewSet
 from service.events import broadcast
-from service.models import Seance
+from service.models import Reservation, Seance
 
 from .models import DailySpecial, Dish, Ingredient, RestaurantTable, StockRequest, Supplier
 from .serializers import (DailySpecialSerializer, DishSerializer, IngredientSerializer, RestaurantTableSerializer,
@@ -35,8 +35,11 @@ class RestaurantTableViewSet(RoleViewSet):
     read_roles = AUTHENTICATED
 
     def get_queryset(self):
-        return RestaurantTable.objects.annotate(is_occupied=Exists(
-            Seance.objects.filter(table=OuterRef('pk'), status=Seance.Status.OPEN)))
+        blocking = Reservation.blocking_walk_ins(timezone.now()).filter(table=OuterRef('pk')).order_by('reservation_time')
+        return RestaurantTable.objects.annotate(
+            is_occupied=Exists(Seance.objects.filter(table=OuterRef('pk'), status=Seance.Status.OPEN)),
+            reserved_at=Subquery(blocking.values('reservation_time')[:1]),
+        )
 
 
 class DishViewSet(RoleViewSet):

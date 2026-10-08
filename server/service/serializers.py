@@ -102,8 +102,7 @@ class OrderSerializer(serializers.ModelSerializer):
         seance = Seance.objects.filter(table=table, status=Seance.Status.OPEN).first()
         if seance:
             return seance, False
-        if Reservation.overlapping(timezone.now()).filter(
-                table=table, status__in=[Reservation.Status.PENDING, Reservation.Status.CONFIRMED]).exists():
+        if Reservation.blocking_walk_ins(timezone.now()).filter(table=table).exists():
             raise serializers.ValidationError({'table_number': 'Table réservée sur le créneau : choisir une autre table.'})
         return Seance.objects.create(table=table, name=name or Seance.WALK_IN_NAME), True
 

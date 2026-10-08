@@ -61,7 +61,7 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | `users/` (`?role=&availability=`) | gérant (lecture : + responsable) | Personnel, livreurs disponibles |
 | `job-applications/` + `accept/`, `reject/` | dépôt public, reste gérant | Candidatures |
 | `suppliers/` | gérant | Fournisseurs |
-| `tables/` (champ calculé `is_occupied`) | lecture connecté, écriture gérant | Plan de salle |
+| `tables/` (champs calculés `is_occupied`, `reserved_at`) | lecture connecté, écriture gérant | Plan de salle : occupée (Séance ouverte) ou réservée maintenant (une réservation pas encore installée couvre l'heure actuelle : pas de client sans réservation possible) |
 | `dishes/` (`?orderable=1`) | lecture publique, écriture gérant | Carte + Recette (`ingredients`) |
 | `daily-specials/` | lecture publique, écriture Chef | Plat du jour (retrait : `is_available=false`) |
 | `GET menu/` | public | Carte disponible + Plat du jour de la date |
@@ -128,8 +128,9 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 - **Temps réel** : `useRealtime()` ouvre un WebSocket par utilisateur connecté, avec un jeton fraîchement rafraîchi à chaque (re)connexion et une reconnexion progressive (1 s → 30 s). Chaque espace affiche le flux « Activité en direct ».
 - **Espace client** (`/espace/client?onglet=…`) : réserver (créneaux 12h–13h et 19h–21h, lundi refusé côté interface, table proposée affichée), commander en livraison (panier depuis le Menu), suivre et annuler réservations et commandes, noter les Additions (cibles issues de l'Addition, 7 jours). Chaque événement personnel (`user_<id>`) recharge les listes et s'affiche en notification.
 - **Espace réservations** (`/espace/reservations`) : onglets Aujourd'hui / À valider / À venir / Livraisons / Historique avec compteurs ; confirmer, changer de table (tables proposées par `free_tables`), check-in avec correction du nombre de personnes, no-show une fois l'heure passée ; livraisons à attribuer, état des livreurs et livraisons en route, le tout en direct.
+- **Espace salle** (`/espace/salle?table=N`) : plan de salle par Zone (libre, occupée avec nom et montant dû, réservée bientôt) ; une table ouvre son panneau : commandes de la Séance (annulation en deux temps), nouvelle commande depuis le Menu (avec nom facultatif pour un client sans réservation), clôture d'une Séance sans commande. Check-ins et paiements arrivent en direct.
 - **Espace parking** (`/espace/parking`) : demandes en attente (garder une place, avec les places déjà prises sur le créneau, ou « parking complet ») et places gardées à venir, en direct.
-- **Briques partagées** (`src/ui/`) : `Tabs` + `useTab` (onglet dans l'URL), `Toast`, `Loading` ; `useLiveRefresh(refresh, notifications)` dans `realtime.ts` recharge les données à chaque événement et traduit ceux qui comptent en notification.
+- **Briques partagées** (`src/ui/`) : `Tabs` + `useTab` (onglet dans l'URL), `Toast`, `Loading`, `MenuPicker` + `menu.ts` (choix des plats avec quantités, panier) ; `useLiveRefresh(refresh, notifications)` dans `realtime.ts` recharge les données à chaque événement et traduit ceux qui comptent en notification.
 - **Espaces pas encore construits** : page d'attente avec la liste de ce qu'ils permettront et le flux « Activité en direct ». `CONTENT` dans `pages/SpacePage.tsx` associe un rôle à son espace dès qu'il existe.
 - **Langue** : `LANGUAGE_CODE = 'fr'` côté Django, pour que les messages de validation (mot de passe, champs) arrivent en français dans les formulaires.
 

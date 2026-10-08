@@ -11,6 +11,8 @@ class SupplierSerializer(serializers.ModelSerializer):
 
 class RestaurantTableSerializer(serializers.ModelSerializer):
     is_occupied = serializers.BooleanField(read_only=True, default=False)  # annotated: has an open Séance
+    # annotated: a reservation not yet seated holds the table now (no walk-in possible)
+    reserved_at = serializers.DateTimeField(read_only=True, default=None, allow_null=True)
 
     class Meta:
         model = RestaurantTable

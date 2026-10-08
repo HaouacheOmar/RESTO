@@ -10,6 +10,7 @@ import { rise, stagger } from '../motion'
 import { useRealtime, type LiveStatus } from '../realtime'
 import ClientSpace from './client/ClientSpace'
 import DeskSpace from './desk/DeskSpace'
+import FloorSpace from './floor/FloorSpace'
 import ParkingSpace from './parking/ParkingSpace'
 import './space.css'
 
@@ -18,6 +19,7 @@ const CONTENT: Partial<Record<Role, ComponentType<{ user: User }>>> = {
   CLIENT: ClientSpace,
   RESERVATION_MANAGER: DeskSpace,
   PARKING_ATTENDANT: ParkingSpace,
+  SERVER: FloorSpace,
 }
 
 const STATUS_LABEL: Record<LiveStatus, string> = {
