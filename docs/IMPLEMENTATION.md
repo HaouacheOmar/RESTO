@@ -64,7 +64,7 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | `suppliers/` | gérant | Fournisseurs |
 | `tables/` (champs calculés `is_occupied`, `reserved_at`) | lecture connecté, écriture gérant | Plan de salle : occupée (Séance ouverte) ou réservée maintenant (une réservation pas encore installée couvre l'heure actuelle : pas de client sans réservation possible) |
 | `dishes/` (`?orderable=1`) | lecture publique, écriture gérant | Carte + Recette (`ingredients`) |
-| `daily-specials/` | lecture publique, écriture Chef | Plat du jour (retrait : `is_available=false`) |
+| `daily-specials/` | lecture publique, écriture Chef | Plat du jour (retrait : `is_available=false`) ; chaque entrée donne aussi `sold` (portions payées ou livrées) et `rating` / `rating_count` ; date passée refusée ; un plat déjà commandé ne peut pas être supprimé (400) |
 | `GET menu/` | public | Carte disponible + Plat du jour de la date |
 | `ingredients/` | gestionnaire de stock | Stock, Ruptures |
 | `stock-requests/` + `approve/` (`supplier`), `fulfill/` | gestionnaire de stock / gérant | Réapprovisionnement |
@@ -131,6 +131,7 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 - **Espace client** (`/espace/client?onglet=…`) : réserver (créneaux 12h–13h et 19h–21h, lundi refusé côté interface, table proposée affichée), commander en livraison (panier depuis le Menu), suivre et annuler réservations et commandes, noter les Additions (cibles issues de l'Addition, 7 jours). Chaque événement personnel (`user_<id>`) recharge les listes et s'affiche en notification.
 - **Espace réservations** (`/espace/reservations`) : onglets Aujourd'hui / À valider / À venir / Livraisons / Historique avec compteurs ; confirmer, changer de table (tables proposées par `free_tables`), check-in avec correction du nombre de personnes, no-show une fois l'heure passée ; livraisons à attribuer, état des livreurs et livraisons en route, le tout en direct.
 - **Espace salle** (`/espace/salle?table=N`) : plan de salle par Zone (libre, occupée avec nom et montant dû, réservée bientôt) ; une table ouvre son panneau : commandes de la Séance (annulation en deux temps), nouvelle commande depuis le Menu (avec nom facultatif pour un client sans réservation), clôture d'une Séance sans commande. Check-ins et paiements arrivent en direct.
+- **Espace chef** (`/espace/chef`) : plat du jour d'aujourd'hui (photo, prix, servis, note ; « épuisé » le retire du Menu, et on peut le remettre), planification des jours suivants (une date par plat), historique avec portions servies et notes. Envoi de la photo en multipart (`FormData`) ; la page d'accueil affiche la photo du Chef quand il y en a une.
 - **Espace livreur** (`/espace/livraison`, pensé pour mobile) : statut et début / fin de service, livraison en cours (client, adresse avec itinéraire, appel, plats, montant à encaisser), « livrée et encaissée » (espèces ou carte) ou « livraison échouée », historique récent.
 - **Espace caisse** (`/espace/caisse`) : tables à encaisser (lignes et montant dû, en direct), encaissement en espèces ou par carte, puis ticket dans une fenêtre `<dialog>` ; l'impression (`@media print`) ne sort que le ticket, au format 80 mm. Onglet « Encaissements du jour » : totaux espèces / carte et réimpression.
 - **Espace parking** (`/espace/parking`) : demandes en attente (garder une place, avec les places déjà prises sur le créneau, ou « parking complet ») et places gardées à venir, en direct.
@@ -147,7 +148,7 @@ docker compose up --build                              # depuis la racine : tout
 docker compose up -d postgres redis
 ../venv/Scripts/python.exe -m pip install -r requirements.txt
 ../venv/Scripts/python.exe manage.py migrate
-../venv/Scripts/python.exe manage.py seed_demo         # restaurant de démo : un compte par rôle, tables, Carte, Plat du jour
+../venv/Scripts/python.exe manage.py seed_demo         # restaurant de démo ; ne crée que ce qui manque (relancé à chaque démarrage Docker sans écraser les modifications)
 ../venv/Scripts/python.exe manage.py runserver         # HTTP + WebSocket (Daphne)
 ../venv/Scripts/python.exe manage.py test              # PostgreSQL et Redis doivent tourner
 ```

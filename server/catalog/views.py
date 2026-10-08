@@ -1,5 +1,6 @@
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Subquery
+from django.db.models import Avg, Count, Exists, IntegerField, OuterRef, ProtectedError, Subquery, Sum
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
@@ -12,7 +13,7 @@ from rest_framework.views import APIView
 from accounts.models import User
 from accounts.permissions import AUTHENTICATED, PUBLIC, RoleViewSet
 from service.events import broadcast
-from service.models import Reservation, Seance
+from service.models import Order, OrderItem, Reservation, Review, Seance
 
 from .models import DailySpecial, Dish, Ingredient, RestaurantTable, StockRequest, Supplier
 from .serializers import (DailySpecialSerializer, DishSerializer, IngredientSerializer, RestaurantTableSerializer,
@@ -52,10 +53,30 @@ class DishViewSet(RoleViewSet):
 
 
 class DailySpecialViewSet(RoleViewSet):
-    queryset = DailySpecial.objects.all()
+    """Plat du jour: the Chef creates one per date (today or later) and withdraws it when sold out.
+
+    Each entry also reports how many were sold and its average rating (subqueries, so the two never multiply).
+    """
     serializer_class = DailySpecialSerializer
     read_roles = PUBLIC
     write_roles = (R.CHEF,)
+
+    def get_queryset(self):
+        sold = (OrderItem.objects.filter(daily_special=OuterRef('pk'),
+                                         order__status__in=[Order.Status.PAID, Order.Status.DELIVERED])
+                .values('daily_special').annotate(n=Sum('quantity')).values('n'))
+        reviews = Review.objects.filter(daily_special=OuterRef('pk')).values('daily_special')
+        return DailySpecial.objects.annotate(
+            sold=Coalesce(Subquery(sold, output_field=IntegerField()), 0),
+            rating=Subquery(reviews.annotate(a=Avg('rating')).values('a')),
+            rating_count=Coalesce(Subquery(reviews.annotate(c=Count('id')).values('c'), output_field=IntegerField()), 0),
+        )
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ProtectedError:
+            raise ValidationError('Ce plat a déjà été commandé : retirez-le du menu plutôt que de le supprimer.')
 
 
 class MenuView(APIView):

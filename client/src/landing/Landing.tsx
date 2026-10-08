@@ -118,8 +118,10 @@ function DailySpecial({ menu }: { menu: MenuState }) {
         <motion.figure className="special-media" initial={{ opacity: 0, transform: 'translateX(-32px)' }}
           whileInView={{ opacity: 1, transform: 'translateX(0px)' }} viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.9, ease: EASE }}>
-          <img src={photo(IMAGES.chef, 1200)} alt="Notre chef préparant le plat du jour en cuisine"
-            loading="lazy" width={1200} height={1500} />
+          {special?.photo
+            ? <img src={special.photo} alt={special.name} loading="lazy" width={1200} height={1500} />
+            : <img src={photo(IMAGES.chef, 1200)} alt="Notre chef préparant le plat du jour en cuisine"
+              loading="lazy" width={1200} height={1500} />}
         </motion.figure>
         <Reveal className="special-text">
           <motion.p variants={rise} className="eyebrow">Plat du jour{special && ` · ${dayLabel(special.date)}`}</motion.p>

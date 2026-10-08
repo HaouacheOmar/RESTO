@@ -47,29 +47,32 @@ SUPPLIERS = [('Meubles du Centre', Supplier.Category.EQUIPMENT, '0550 11 22 33')
 
 
 class Command(BaseCommand):
-    help = 'Fill the database with a demo restaurant (idempotent: safe to run again).'
+    help = 'Fill the database with a demo restaurant. Creates only what is missing, so staff edits survive.'
 
     @transaction.atomic
     def handle(self, *args, **options):
+        # Only creates what is missing: it runs on every container start and must never undo staff edits.
         for username, role, first, last in ACCOUNTS:
-            user, _ = User.objects.update_or_create(username=username, defaults={
+            user, created = User.objects.get_or_create(username=username, defaults={
                 'role': role, 'first_name': first, 'last_name': last, 'email': f'{username}@resto.demo',
                 'is_staff': role == R.ADMIN_MANAGER, 'is_superuser': role == R.ADMIN_MANAGER})
-            user.set_password(PASSWORD)
-            user.save()
+            if created:
+                user.set_password(PASSWORD)
+                user.save()
         for number, capacity, zone in TABLES:
-            RestaurantTable.objects.update_or_create(number=number, defaults={'capacity': capacity, 'zone': zone})
-        ingredients = {name: Ingredient.objects.update_or_create(name=name, defaults={
+            RestaurantTable.objects.get_or_create(number=number, defaults={'capacity': capacity, 'zone': zone})
+        ingredients = {name: Ingredient.objects.get_or_create(name=name, defaults={
             'unit': unit, 'quantity_in_stock': qty})[0] for name, unit, qty in INGREDIENTS}
         for name, description, price, recipe in CARTE:
-            dish, _ = Dish.objects.update_or_create(name=name, defaults={
+            dish, created = Dish.objects.get_or_create(name=name, defaults={
                 'description': description, 'price': Decimal(price)})
-            dish.ingredients.set(ingredients[i] for i in recipe)
-        DailySpecial.objects.update_or_create(date=timezone.localdate(), defaults={
+            if created:
+                dish.ingredients.set(ingredients[i] for i in recipe)
+        DailySpecial.objects.get_or_create(date=timezone.localdate(), defaults={
             'name': 'Rechta au poulet', 'description': 'Nouilles fraîches, sauce blanche, poulet et navets.',
             'price': Decimal('1200')})
         for name, category, phone in SUPPLIERS:
-            Supplier.objects.update_or_create(name=name, defaults={'category': category, 'contact_phone': phone})
+            Supplier.objects.get_or_create(name=name, defaults={'category': category, 'contact_phone': phone})
 
         self.stdout.write(self.style.SUCCESS('Demo restaurant ready.'))
         self.stdout.write(f'Accounts (password "{PASSWORD}"): ' + ', '.join(a[0] for a in ACCOUNTS))

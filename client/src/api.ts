@@ -27,6 +27,8 @@ const ENDPOINTS = {
   orderDeliver: (id: number) => `/api/orders/${id}/deliver/`,
   orderFail: (id: number) => `/api/orders/${id}/fail/`,
   availability: '/api/auth/me/availability/',
+  dailySpecials: '/api/daily-specials/',
+  dailySpecial: (id: number) => `/api/daily-specials/${id}/`,
   tables: '/api/tables/',
   seances: '/api/seances/',
   seanceClose: (id: number) => `/api/seances/${id}/close/`,
@@ -140,10 +142,11 @@ export async function api<T>(endpoint: Endpoint, { id, query, method = 'GET', bo
     method,
     signal,
     headers: {
-      ...(body !== undefined && { 'Content-Type': 'application/json' }),
+      // FormData (file upload) sets its own multipart boundary
+      ...(body !== undefined && !(body instanceof FormData) && { 'Content-Type': 'application/json' }),
       ...(token && { Authorization: `Bearer ${token}` }),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined || body instanceof FormData ? body : JSON.stringify(body),
   })
   if (auth && !access && session.hasRefresh()) await refreshAccess()
   let res = await send(auth ? access : null)
@@ -298,6 +301,11 @@ export interface Dish {
 
 export interface DailySpecial extends Dish {
   date: string
+  is_available: boolean
+  /** Servings paid or delivered (not on the public Menu). */
+  sold?: number | null
+  rating?: number | null
+  rating_count?: number | null
 }
 
 export interface Menu {

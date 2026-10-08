@@ -280,6 +280,14 @@ class MenuAndStockTests(RestoTestCase):
 
         self.as_(R.CHEF).patch(f'/api/daily-specials/{chorba["id"]}/', {'is_available': False})  # sold out
         self.assertIsNone(self.as_(None).get('/api/menu/').json()['plat_du_jour'])
+
+        listed = {d['name']: d for d in self.as_(R.CHEF).get('/api/daily-specials/').json()}
+        self.assertEqual((listed['Chorba']['sold'], listed['Chorba']['rating_count']), (0, 0))  # ordered, not paid yet
+        self.assertEqual(self.as_(R.CHEF).delete(f'/api/daily-specials/{chorba["id"]}/').status_code, 400)  # ordered
+        self.assertEqual(self.as_(R.CHEF).post('/api/daily-specials/', {**special, 'date': (today - timedelta(days=2)).isoformat()})
+                         .status_code, 400)  # past date
+        planned = self.as_(R.CHEF).post('/api/daily-specials/', {**special, 'date': (today + timedelta(days=3)).isoformat()}).json()
+        self.assertEqual(self.as_(R.CHEF).delete(f'/api/daily-specials/{planned["id"]}/').status_code, 204)
         self.assertEqual(line(daily_special=chorba['id']).status_code, 400)
 
 
@@ -391,6 +399,17 @@ class SeedDemoTests(APITestCase):
         menu = self.client.get('/api/menu/').json()
         self.assertEqual((len(menu['carte']), menu['plat_du_jour']['name']), (10, 'Rechta au poulet'))
         self.assertIn('access', self.client.post('/api/auth/token/', {'username': 'client', 'password': PASSWORD}).json())
+
+        # Staff edits survive a restart (the stack runs seed_demo on every start)
+        DailySpecial.objects.filter(date=timezone.localdate()).update(price=1300)
+        Dish.objects.filter(name='Bourek').update(price=450)
+        chef = User.objects.get(username='chef')
+        chef.set_password('changed-by-chef')
+        chef.save()
+        call_command('seed_demo', stdout=StringIO())
+        self.assertEqual(DailySpecial.objects.get(date=timezone.localdate()).price, Decimal('1300'))
+        self.assertEqual(Dish.objects.get(name='Bourek').price, Decimal('450'))
+        self.assertTrue(User.objects.get(username='chef').check_password('changed-by-chef'))
 
 
 class RealtimeTests(APITransactionTestCase):

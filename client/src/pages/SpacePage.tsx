@@ -8,6 +8,7 @@ import { canOpen, homeOf, roleOfSlug, SPACES } from '../auth/roles'
 import { useAuth } from '../auth/useAuth'
 import { rise, stagger } from '../motion'
 import { useRealtime, type LiveStatus } from '../realtime'
+import ChefSpace from './chef/ChefSpace'
 import ClientSpace from './client/ClientSpace'
 import DeskSpace from './desk/DeskSpace'
 import DriverSpace from './driver/DriverSpace'
@@ -24,6 +25,7 @@ const CONTENT: Partial<Record<Role, ComponentType<{ user: User }>>> = {
   SERVER: FloorSpace,
   CASHIER: TillSpace,
   DELIVERER: DriverSpace,
+  CHEF: ChefSpace,
 }
 
 const STATUS_LABEL: Record<LiveStatus, string> = {
