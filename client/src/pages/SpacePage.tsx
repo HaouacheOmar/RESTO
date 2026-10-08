@@ -1,20 +1,14 @@
-import { AnimatePresence, motion } from 'motion/react'
-import { LogOut, Radio } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 
 import type { Role, User } from '../api'
 import { canOpen, homeOf, roleOfSlug, SPACES } from '../auth/roles'
 import { useAuth } from '../auth/useAuth'
-import { rise, stagger } from '../motion'
-import { useRealtime, type LiveStatus } from '../realtime'
 import './space.css'
 
-/**
- * Built spaces, loaded on demand: each role only downloads its own screen. Roles without one yet see the
- * placeholder.
- */
-const CONTENT: Partial<Record<Role, LazyExoticComponent<ComponentType<{ user: User }>>>> = {
+/** One space per role, loaded on demand: each role only downloads its own screen. */
+const CONTENT: Record<Role, LazyExoticComponent<ComponentType<{ user: User }>>> = {
   CLIENT: lazy(() => import('./client/ClientSpace')),
   RESERVATION_MANAGER: lazy(() => import('./desk/DeskSpace')),
   PARKING_ATTENDANT: lazy(() => import('./parking/ParkingSpace')),
@@ -23,15 +17,8 @@ const CONTENT: Partial<Record<Role, LazyExoticComponent<ComponentType<{ user: Us
   DELIVERER: lazy(() => import('./driver/DriverSpace')),
   CHEF: lazy(() => import('./chef/ChefSpace')),
   ADMIN_MANAGER: lazy(() => import('./manager/ManagerSpace')),
+  STOCK_MANAGER: lazy(() => import('./stock/StockSpace')),
 }
-
-const STATUS_LABEL: Record<LiveStatus, string> = {
-  connecting: 'Connexion au direct…',
-  open: 'En direct',
-  offline: 'Hors ligne',
-}
-
-const time = new Intl.DateTimeFormat('fr-DZ', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
 
 /** Sends anonymous visitors to the login page, remembering where they wanted to go. */
 export function RequireAuth({ children }: { children: (user: User) => ReactNode }) {
@@ -73,51 +60,7 @@ function Space({ role }: { role: Role }) {
           </button>
         </div>
       </header>
-      {Content
-        ? <Suspense fallback={<p className="page-loading" role="status">Chargement…</p>}><Content user={state.user} /></Suspense>
-        : <Placeholder user={state.user} role={role} />}
+      <Suspense fallback={<p className="page-loading" role="status">Chargement…</p>}><Content user={state.user} /></Suspense>
     </div>
-  )
-}
-
-function Placeholder({ user, role }: { user: User; role: Role }) {
-  const { status, events } = useRealtime(true)
-  const { title, upcoming } = SPACES[role]
-  return (
-    <main className="space-main">
-      <motion.section className="space-intro" variants={stagger(0.08)} initial="hidden" animate="show">
-        <motion.p variants={rise} className="eyebrow">{title}</motion.p>
-        <motion.h1 variants={rise}>Bonjour {user.first_name || user.username}.</motion.h1>
-        <motion.p variants={rise} className="space-lead">Votre espace se construit : voici ce qu’il vous permettra de faire.</motion.p>
-        <motion.ul variants={rise} className="space-upcoming">
-          {upcoming.map((item) => <li key={item}>{item}</li>)}
-        </motion.ul>
-      </motion.section>
-
-      <section className="live" aria-labelledby="live-title">
-        <div className="live-head">
-          <h2 id="live-title">Activité en direct</h2>
-          <span className={`live-status is-${status}`} role="status">
-            <Radio aria-hidden="true" size={14} /> {STATUS_LABEL[status]}
-          </span>
-        </div>
-        {events.length === 0 ? (
-          <p className="live-empty">Les événements de votre rôle apparaîtront ici dès qu’ils se produisent.</p>
-        ) : (
-          <ol className="live-list" aria-live="polite">
-            <AnimatePresence initial={false}>
-              {events.map((e) => (
-                <motion.li key={e.id} layout initial={{ opacity: 0, transform: 'translateY(-8px)' }}
-                  animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={{ duration: 0.3 }}>
-                  <time dateTime={e.receivedAt.toISOString()}>{time.format(e.receivedAt)}</time>
-                  <code>{e.event}</code>
-                  {'id' in e.payload && <span className="live-ref">#{String(e.payload.id)}</span>}
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ol>
-        )}
-      </section>
-    </main>
   )
 }

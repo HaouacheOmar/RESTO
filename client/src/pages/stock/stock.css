@@ -1,0 +1,14 @@
+/* Stock manager. Shared blocks (layout, cards, tabs, inline forms, buttons) live in src/index.css. */
+.stock { max-width: 64rem; }
+.stock-row { grid-template-columns: 1fr; align-items: center; gap: var(--space-3) var(--space-6); }
+@media (min-width: 800px) { .stock-row { grid-template-columns: minmax(0, 2fr) 15rem minmax(0, 1.4fr); } }  /* fixed: inputs align across rows */
+.stock-row.is-out { border-left: 3px solid var(--color-danger); }
+.stock-name { display: grid; gap: var(--space-1); justify-items: start; }
+.stock-name h3 { font-size: var(--text-lg); }
+.stock-name .muted { font-size: var(--text-sm); }
+.stock-qty { display: flex; align-items: center; gap: var(--space-2); }
+.stock-qty input { width: 6.5rem; min-height: 44px; padding: 0 var(--space-3); font: inherit; border: 1px solid var(--color-border); background: #fff; border-radius: var(--radius-sm); }
+.stock-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-3); }
+@media (max-width: 799px) { .stock-actions { justify-content: flex-start; } }
+.rupture-confirm { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--color-danger-soft); font-size: var(--text-sm); }
+.stock-row > .field-error { grid-column: 1 / -1; }

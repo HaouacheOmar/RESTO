@@ -94,7 +94,7 @@ class MenuView(APIView):
 
 
 class IngredientViewSet(RoleViewSet):
-    queryset = Ingredient.objects.all()
+    queryset = Ingredient.objects.prefetch_related('dishes')
     serializer_class = IngredientSerializer
     read_roles = write_roles = (R.STOCK_MANAGER,)
 
@@ -106,7 +106,7 @@ class IngredientViewSet(RoleViewSet):
 
 
 class StockRequestViewSet(RoleViewSet):
-    queryset = StockRequest.objects.select_related('ingredient')
+    queryset = StockRequest.objects.select_related('ingredient', 'supplier')
     serializer_class = StockRequestSerializer
     http_method_names = ['get', 'post']
     read_roles = (R.STOCK_MANAGER,)
@@ -123,7 +123,10 @@ class StockRequestViewSet(RoleViewSet):
         for name, value in {'status': new, **fields}.items():
             setattr(stock_request, name, value)
         stock_request.save()
-        return Response(self.get_serializer(stock_request).data)
+        data = self.get_serializer(stock_request).data
+        if stock_request.requested_by_id:  # the stock manager follows their request
+            broadcast(f'user_{stock_request.requested_by_id}', 'stock_request_updated', data)
+        return Response(data)
 
     @extend_schema(request=inline_serializer('SupplierChoice', {'supplier': serializers.IntegerField()}))
     @action(detail=True, methods=['post'])

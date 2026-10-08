@@ -242,6 +242,8 @@ class DeliveryTests(RestoTestCase):
 
 class MenuAndStockTests(RestoTestCase):
     def test_rupture_makes_recipe_dishes_unavailable_until_the_stock_manager_ends_it(self):
+        listed = {i['name']: i for i in self.as_(R.STOCK_MANAGER).get('/api/ingredients/').json()}
+        self.assertEqual(listed['Tomate']['dishes'], ['Couscous'])  # what a Rupture would take off the Menu
         self.as_(R.STOCK_MANAGER).patch(f'/api/ingredients/{self.tomato.pk}/', {'is_out_of_stock': True})
         self.assertEqual([d['name'] for d in self.as_(None).get('/api/menu/').json()['carte']], ['Thé'])
         self.assertEqual(self.delivery((self.couscous, 1)).status_code, 400)
@@ -253,8 +255,8 @@ class MenuAndStockTests(RestoTestCase):
         url = f'/api/stock-requests/{req["id"]}/'
         self.assertEqual(self.post(R.ADMIN_MANAGER, url + 'fulfill/').status_code, 400)  # not approved yet
         self.assertEqual(self.post(R.ADMIN_MANAGER, url + 'approve/', {'supplier': equipment.pk}).status_code, 400)
-        self.assertEqual(self.post(R.ADMIN_MANAGER, url + 'approve/', {'supplier': supplier.pk}).json()['supplier'],
-                         supplier.pk)
+        approved = self.post(R.ADMIN_MANAGER, url + 'approve/', {'supplier': supplier.pk}).json()
+        self.assertEqual((approved['supplier'], approved['supplier_name']), (supplier.pk, 'Primeurs'))
         self.assertEqual(self.post(R.ADMIN_MANAGER, url + 'fulfill/').json()['status'], 'FULFILLED')
         self.tomato.refresh_from_db()
         self.assertTrue(self.tomato.is_out_of_stock)  # fulfilling does not end the Rupture

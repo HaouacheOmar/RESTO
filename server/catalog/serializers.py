@@ -52,6 +52,9 @@ class DailySpecialSerializer(serializers.ModelSerializer):
 
 
 class IngredientSerializer(serializers.ModelSerializer):
+    # Carte dishes whose Recette uses it: what a Rupture takes off the Menu
+    dishes = serializers.SlugRelatedField(many=True, read_only=True, slug_field='name')
+
     class Meta:
         model = Ingredient
         fields = '__all__'
@@ -59,6 +62,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 class StockRequestSerializer(serializers.ModelSerializer):
     ingredient_name = serializers.CharField(source='ingredient.name', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True, default=None)
 
     class Meta:
         model = StockRequest

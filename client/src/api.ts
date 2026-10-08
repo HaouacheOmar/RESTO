@@ -37,6 +37,7 @@ const ENDPOINTS = {
   dishes: '/api/dishes/',
   dish: (id: number) => `/api/dishes/${id}/`,
   ingredients: '/api/ingredients/',
+  ingredient: (id: number) => `/api/ingredients/${id}/`,
   table: (id: number) => `/api/tables/${id}/`,
   suppliers: '/api/suppliers/',
   supplier: (id: number) => `/api/suppliers/${id}/`,
@@ -246,6 +247,8 @@ export interface Ingredient {
   quantity_in_stock: string
   unit: string
   is_out_of_stock: boolean
+  /** Carte dishes whose Recette uses it (what a Rupture takes off the Menu). */
+  dishes: string[]
 }
 
 export interface CarteDish extends Dish {
@@ -269,6 +272,7 @@ export interface StockRequest {
   ingredient_name: string
   quantity_requested: string
   supplier: number | null
+  supplier_name: string | null
   status: 'PENDING' | 'APPROVED' | 'FULFILLED'
   created_at: string
 }
