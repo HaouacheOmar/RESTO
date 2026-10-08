@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 from decimal import Decimal
 
@@ -210,6 +211,18 @@ class DeliveryTests(RestoTestCase):
         addition = Order.objects.get(pk=first['id']).addition
         self.assertEqual((addition.amount, addition.collected_by, addition.client, addition.seance),
                          (Decimal('12.50'), deliverer, self.client_user, None))
+
+    def test_driver_starts_and_ends_shift_but_not_mid_delivery(self):
+        url = '/api/auth/me/availability/'
+        self.assertEqual(self.post(R.DELIVERER, url, {'availability': 'OFFLINE'}).json()['availability'], 'OFFLINE')
+        order = self.delivery((self.tea, 1)).json()
+        self.assertEqual(self.post(R.RESERVATION_MANAGER, f'/api/orders/{order["id"]}/assign_deliverer/',
+                                   {'deliverer': self.users[R.DELIVERER].pk}).status_code, 400)  # off shift
+        self.assertEqual(self.post(R.DELIVERER, url, {'availability': 'AVAILABLE'}).status_code, 200)
+        self.post(R.RESERVATION_MANAGER, f'/api/orders/{order["id"]}/assign_deliverer/', {'deliverer': self.users[R.DELIVERER].pk})
+        self.assertEqual(self.post(R.DELIVERER, url, {'availability': 'OFFLINE'}).status_code, 400)  # busy
+        self.assertEqual(self.post(R.DELIVERER, url, {'availability': 'BUSY'}).status_code, 400)
+        self.assertEqual(self.post(R.ADMIN_MANAGER, url, {'availability': 'OFFLINE'}).status_code, 403)
 
     def test_client_cancels_before_assignment(self):
         order = self.delivery((self.tea, 1)).json()
@@ -428,6 +441,25 @@ class RealtimeTests(APITransactionTestCase):
             return events
 
         self.assertEqual(async_to_sync(scenario)(), ['parking_requested', 'reservation_cancelled'])
+
+    def test_idle_socket_still_receives_after_the_redis_blocking_window(self):
+        """channels_redis waits on Redis with a 5 s blocking read; an idle socket must survive it (redis-py 8 did not)."""
+        from asgiref.sync import sync_to_async as s2a
+        from channels.layers import get_channel_layer
+
+        cashier = User.objects.create_user(username='cashier', password='x', role=R.CASHIER)
+
+        async def scenario():
+            ws = WebsocketCommunicator(NotificationConsumer.as_asgi(), '/ws/')
+            ws.scope['user'] = cashier
+            self.assertTrue((await ws.connect())[0])
+            await asyncio.sleep(6)  # longer than channels_redis's brpop_timeout (5 s)
+            await get_channel_layer().group_send('kitchen_pos', {'type': 'notify', 'event': 'ping', 'payload': {}})
+            message = await ws.receive_json_from(timeout=5)
+            await ws.disconnect()
+            return message['event']
+
+        self.assertEqual(async_to_sync(scenario)(), 'ping')
 
     def test_socket_auth_via_jwt_query_token(self):
         from rest_framework_simplejwt.tokens import AccessToken

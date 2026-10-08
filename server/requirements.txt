@@ -3,6 +3,8 @@ djangorestframework>=3.18
 djangorestframework-simplejwt>=5.5
 channels>=4.3
 channels-redis>=4.3
+# redis-py 8 times out on channels_redis's 5 s blocking read (BZPOPMIN) and kills idle WebSockets
+redis>=5,<8
 daphne>=4.2
 psycopg2-binary>=2.9
 Pillow>=12

@@ -3,7 +3,7 @@ from django.db import transaction
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import generics, permissions, serializers
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -12,6 +12,8 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.settings import api_settings as jwt_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+from service.events import broadcast
 
 from .models import JobApplication, User
 from .permissions import PUBLIC, RoleViewSet
@@ -88,6 +90,29 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class AvailabilityView(APIView):
+    """A deliverer starts or ends their shift (AVAILABLE ⇄ OFFLINE). BUSY is only set by deliveries."""
+
+    @extend_schema(request=inline_serializer('Availability', {
+        'availability': serializers.ChoiceField([User.Availability.AVAILABLE, User.Availability.OFFLINE])}),
+        responses=UserSerializer)
+    @transaction.atomic
+    def post(self, request):
+        if request.user.role != User.Role.DELIVERER:
+            raise PermissionDenied('Réservé aux livreurs.')
+        wanted = request.data.get('availability')
+        if wanted not in (User.Availability.AVAILABLE, User.Availability.OFFLINE):
+            raise ValidationError({'availability': 'Choisir AVAILABLE ou OFFLINE.'})
+        user = User.objects.select_for_update().get(pk=request.user.pk)  # same lock as assign_deliverer
+        if user.availability == User.Availability.BUSY:
+            raise ValidationError('Terminez d’abord votre livraison en cours.')
+        user.availability = wanted
+        user.save(update_fields=['availability'])
+        data = UserSerializer(user).data
+        broadcast('deliveries', 'driver_availability', data)
+        return Response(data)
 
 
 class UserViewSet(RoleViewSet):

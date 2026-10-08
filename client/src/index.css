@@ -212,3 +212,16 @@ p { margin: 0; text-wrap: pretty; }
 .cart-total { padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
 .cart-total strong { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 400; color: var(--color-gold); }
 
+
+/* Payment method choice (cashier, driver) */
+.pay-panel { display: grid; gap: var(--space-3); padding: var(--space-4); margin-top: var(--space-2); background: var(--color-cream); }
+.pay-methods { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.pay-methods legend { font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); }
+.pay-methods label {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 48px;
+  background: #fff; border: 1px solid var(--color-border); font-weight: 600; cursor: pointer;
+}
+.pay-methods label.is-selected { border-color: var(--color-gold); box-shadow: inset 0 0 0 1px var(--color-gold); }
+.pay-methods label:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.pay-methods input { position: absolute; opacity: 0; }
+
