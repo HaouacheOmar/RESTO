@@ -4,6 +4,10 @@
 
 A distributed restaurant management system. Every role in the restaurant (manager, reservation desk, chef, waiters, cashier, delivery drivers, parking attendant, stock keeper) and its clients work on the same live state: a reservation, an order or a payment shows up instantly on the screens that need it.
 
+[![RESTO showcase video: one evening across the nine role spaces (45 s)](docs/media/RESTO.jpg)](docs/media/RESTO.mp4)
+
+*Showcase (45 s): one evening, from booking to receipt, across the nine role spaces. Click the image to play.*
+
 ## Features
 
 - **Reservations**: automatic table proposal (zone, party size, 2-hour slots), parking spot handling, check-in, no-shows.
