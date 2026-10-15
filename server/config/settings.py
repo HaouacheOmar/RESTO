@@ -187,7 +187,9 @@ SPECTACULAR_SETTINGS = {
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {'hosts': [os.environ.get('REDIS_URL', 'redis://localhost:6380/0')]},
+        # REDIS_DB lets the app share one Redis with another project (a db index the URL doesn't set)
+        'CONFIG': {'hosts': [{'address': os.environ.get('REDIS_URL', 'redis://localhost:6380/0'),
+                              'db': int(os.environ.get('REDIS_DB', '0'))}]},
     }
 }
 
