@@ -1,9 +1,9 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://resto-api-xvuz.onrender.com/api/:path*" },
-    { "source": "/admin/:path*", "destination": "https://resto-api-xvuz.onrender.com/admin/:path*" },
-    { "source": "/static/:path*", "destination": "https://resto-api-xvuz.onrender.com/static/:path*" },
-    { "source": "/media/:path*", "destination": "https://resto-api-xvuz.onrender.com/media/:path*" },
+    { "source": "/api/(.*)", "destination": "https://resto-api-xvuz.onrender.com/api/$1" },
+    { "source": "/admin/(.*)", "destination": "https://resto-api-xvuz.onrender.com/admin/$1" },
+    { "source": "/static/(.*)", "destination": "https://resto-api-xvuz.onrender.com/static/$1" },
+    { "source": "/media/(.*)", "destination": "https://resto-api-xvuz.onrender.com/media/$1" },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }
