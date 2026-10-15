@@ -163,7 +163,15 @@ Les tests de `service/tests.py` sont regroupés par domaine : réservations, Sé
 
 ### Image de production
 
-`server/Dockerfile` construit une image qui applique les migrations puis lance Daphne sur `$PORT` (8000 par défaut). Les fichiers statiques (admin) sont servis par WhiteNoise. Avec `DEBUG=0`, `SECRET_KEY` est obligatoire, les cookies sont sécurisés et le HTTPS est détecté derrière le proxy de l'hébergeur (`X-Forwarded-Proto`). Variables : voir `server/.env.example`.
+`server/Dockerfile` construit une image qui applique les migrations, crée le restaurant de démo (`seed_demo`) puis lance Daphne sur `$PORT` (8000 par défaut). Les fichiers statiques (admin) sont servis par WhiteNoise. Avec `DEBUG=0`, `SECRET_KEY` est obligatoire, les cookies sont sécurisés et le HTTPS est détecté derrière le proxy de l'hébergeur (`X-Forwarded-Proto`). Variables : voir `server/.env.example`.
+
+### Démo en ligne
+
+- **Frontend** : Vercel ([resto-ruby-nine.vercel.app](https://resto-ruby-nine.vercel.app)). `client/vercel.json` réécrit `/api`, `/admin`, `/static` et `/media` vers l'API : le navigateur reste sur une seule origine, donc le cookie de rafraîchissement `SameSite=Strict` fonctionne. Vercel ne relaie pas les WebSockets : le build reçoit `VITE_WS_URL` (domaine de l'API) et le socket s'y connecte directement, avec le jeton en paramètre.
+- **API** : Render, image Docker de `server/` décrite par `render.yaml`. `ALLOWED_HOSTS` contient aussi le domaine Vercel, car le validateur d'origine des WebSockets le compare à l'en-tête `Origin`.
+- **Base de données** : PostgreSQL Supabase via le pooler de session (IPv4), `POSTGRES_SSLMODE=require`. L'API de données Supabase est désactivée : seules les requêtes de Django atteignent les tables.
+- **Photos** : Supabase Storage par le protocole S3 (`django-storages`), bucket public `media` ; sans `S3_BUCKET`, les photos restent dans `media/`.
+- **Redis** : l'instance Key Value gratuite du compte Render, partagée avec un autre projet sur son propre index (`REDIS_DB=1`).
 
 ## 9. Évolutions prévues
-Frontend, stockage des photos sur S3 ou Cloudinary, OpenAPI, CI, déploiement, flux cuisine pour le Chef, Addition partagée.
+Flux cuisine pour le Chef, Addition partagée.

@@ -8,6 +8,8 @@ A distributed restaurant management system. Every role in the restaurant (manage
 
 *Showcase (45 s): one evening, from booking to receipt, across the nine role spaces. Click the image to play.*
 
+**Live demo: [resto-ruby-nine.vercel.app](https://resto-ruby-nine.vercel.app)**. Sign in with any demo account below (password `demo-resto-2026`). The API runs on a free instance that sleeps when idle, so the first request can take up to a minute.
+
 ## Features
 
 - **Reservations**: automatic table proposal (zone, party size, 2-hour slots), parking spot handling, check-in, no-shows.
@@ -78,6 +80,18 @@ Run the backend tests (PostgreSQL and Redis up): `cd server && python manage.py 
 - [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md): visual identity, components and motion rules for the frontend.
 
 The specs are written in French, like the restaurant's vocabulary.
+
+## Deployment
+
+| Part | Host |
+| :--- | :--- |
+| Frontend | Vercel (`client/`, `client/vercel.json` forwards `/api`, `/admin`, `/static`, `/media` to the API) |
+| API + WebSockets | Render, Docker image from `server/` (`render.yaml`); the app opens WebSockets on the API's own domain (`VITE_WS_URL`) |
+| Database | Supabase PostgreSQL, through the session pooler (`POSTGRES_SSLMODE=require`) |
+| Dish photos | Supabase Storage, S3 protocol (`S3_*` variables) |
+| Redis | Render Key Value (the free instance, shared on its own db index: `REDIS_DB`) |
+
+The container applies migrations and creates the demo restaurant on start. Variables: `server/.env.example`.
 
 ## Roadmap
 

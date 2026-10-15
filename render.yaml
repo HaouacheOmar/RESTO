@@ -12,7 +12,7 @@ services:
       - { key: DEBUG, value: "0" }
       - { key: SECRET_KEY, generateValue: true }
       - { key: TIME_ZONE, value: Africa/Algiers }
-      - { key: ALLOWED_HOSTS, sync: false }         # resto-api.onrender.com,<app>.vercel.app
+      - { key: ALLOWED_HOSTS, sync: false }         # resto-api-xvuz.onrender.com,resto-ruby-nine.vercel.app (WebSocket Origin is the Vercel domain)
       - { key: CSRF_TRUSTED_ORIGINS, sync: false }  # https://<app>.vercel.app,https://resto-api-xvuz.onrender.com
       - key: REDIS_URL
         fromService: { type: keyvalue, name: eshop-redis, property: connectionString }
