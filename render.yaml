@@ -1,0 +1,35 @@
+# Render blueprint: API (Daphne) + Redis. Database and photos live in Supabase; secrets are set in the dashboard.
+services:
+  - type: web
+    name: resto-api
+    runtime: docker
+    rootDir: server
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/menu/
+    envVars:
+      - { key: DEBUG, value: "0" }
+      - { key: SECRET_KEY, generateValue: true }
+      - { key: TIME_ZONE, value: Africa/Algiers }
+      - { key: ALLOWED_HOSTS, sync: false }         # resto-api.onrender.com,<app>.vercel.app
+      - { key: CSRF_TRUSTED_ORIGINS, sync: false }  # https://<app>.vercel.app,https://resto-api.onrender.com
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: resto-redis, property: connectionString }
+      - { key: POSTGRES_HOST, sync: false }         # Supabase session pooler host
+      - { key: POSTGRES_PORT, value: "5432" }
+      - { key: POSTGRES_DB, value: postgres }
+      - { key: POSTGRES_USER, sync: false }         # postgres.<project-ref>
+      - { key: POSTGRES_PASSWORD, sync: false }
+      - { key: POSTGRES_SSLMODE, value: require }
+      - { key: S3_BUCKET, value: media }
+      - { key: S3_REGION, value: eu-central-1 }
+      - { key: S3_ENDPOINT_URL, sync: false }
+      - { key: S3_ACCESS_KEY_ID, sync: false }
+      - { key: S3_SECRET_ACCESS_KEY, sync: false }
+      - { key: S3_PUBLIC_DOMAIN, sync: false }
+
+  - type: keyvalue
+    name: resto-redis
+    plan: free
+    region: frankfurt
+    ipAllowList: []  # internal only

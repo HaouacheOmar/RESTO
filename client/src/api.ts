@@ -193,8 +193,9 @@ export function useApi<T>(endpoint: Endpoint, query?: Query) {
 export async function realtimeUrl(): Promise<string | null> {
   const token = await refreshAccess()
   if (!token) return null
-  const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${scheme}://${location.host}${ENDPOINTS.realtime}?token=${encodeURIComponent(token)}`
+  // VITE_WS_URL: the backend's own origin when the host proxying /api can't proxy WebSockets (Vercel)
+  const base = import.meta.env.VITE_WS_URL ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
+  return `${base}${ENDPOINTS.realtime}?token=${encodeURIComponent(token)}`
 }
 
 // ---------------------------------------------------------------------------------------------

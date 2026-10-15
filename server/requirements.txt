@@ -10,3 +10,4 @@ psycopg2-binary>=2.9
 Pillow>=12
 drf-spectacular>=0.30
 whitenoise>=6.12
+django-storages[s3]>=1.14

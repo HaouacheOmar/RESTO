@@ -30,10 +30,6 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
-    command: >
-      sh -c "python manage.py migrate --noinput
-      && python manage.py seed_demo
-      && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes: [media:/app/media]
     depends_on:
       postgres: { condition: service_healthy }

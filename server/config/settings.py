@@ -101,6 +101,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'resto'),
         'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
         'PORT': os.environ.get('POSTGRES_PORT', '5434'),
+        'OPTIONS': {'sslmode': os.environ.get('POSTGRES_SSLMODE', 'prefer')},  # 'require' for Supabase
     }
 }
 
@@ -148,6 +149,21 @@ STORAGES = {
 }
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+if os.environ.get('S3_BUCKET'):  # production: photos in an S3-compatible bucket (Supabase Storage)
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': os.environ['S3_BUCKET'],
+            'endpoint_url': os.environ['S3_ENDPOINT_URL'],
+            'access_key': os.environ['S3_ACCESS_KEY_ID'],
+            'secret_key': os.environ['S3_SECRET_ACCESS_KEY'],
+            'region_name': os.environ.get('S3_REGION', 'eu-central-1'),
+            'addressing_style': 'path',
+            'custom_domain': os.environ['S3_PUBLIC_DOMAIN'],  # public bucket URL without https://
+            'querystring_auth': False,
+            'file_overwrite': False,
+        },
+    }
 
 AUTH_USER_MODEL = 'accounts.User'
 
