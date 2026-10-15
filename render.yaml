@@ -13,7 +13,7 @@ services:
       - { key: SECRET_KEY, generateValue: true }
       - { key: TIME_ZONE, value: Africa/Algiers }
       - { key: ALLOWED_HOSTS, sync: false }         # resto-api.onrender.com,<app>.vercel.app
-      - { key: CSRF_TRUSTED_ORIGINS, sync: false }  # https://<app>.vercel.app,https://resto-api.onrender.com
+      - { key: CSRF_TRUSTED_ORIGINS, sync: false }  # https://<app>.vercel.app,https://resto-api-xvuz.onrender.com
       - key: REDIS_URL
         fromService: { type: keyvalue, name: eshop-redis, property: connectionString }
       - { key: REDIS_DB, value: "1" }
