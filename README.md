@@ -53,7 +53,7 @@ Then open **http://localhost:8088**. The stack starts PostgreSQL, Redis, the Dja
 
 - **http://localhost:8088/**: landing page (live menu and dish of the day).
 - **http://localhost:8088/api/docs/**: interactive API (log in with `POST /api/auth/token/`, then *Authorize*).
-- **http://localhost:8088/admin/**: back office (`manager` account).
+- **http://localhost:8088/admin/**: back office (`manager` account). It's switched off on the public demo, where the manager password is published (`ADMIN_ENABLED=0`).
 - **ws://localhost:8088/ws/?ticket=<ticket>**: live events for the logged-in role (get a single-use ticket from `POST /api/realtime/ticket/`).
 
 Demo accounts: `manager`, `reservations`, `chef`, `waiter`, `cashier`, `driver`, `parking`, `stock`, `client`, all with the password `demo-resto-2026`.
@@ -85,7 +85,7 @@ The specs are written in French, like the restaurant's vocabulary.
 
 | Part | Host |
 | :--- | :--- |
-| Frontend | Vercel (`client/`, `client/vercel.json` forwards `/api`, `/admin`, `/static`, `/media` to the API) |
+| Frontend | Vercel (`client/`, `client/vercel.json` forwards `/api` and `/media` to the API) |
 | API + WebSockets | Render, Docker image from `server/` (`render.yaml`); the app opens WebSockets on the API's own domain (`VITE_WS_URL`) |
 | Database | Supabase PostgreSQL, through the session pooler (`POSTGRES_SSLMODE=require`) |
 | Dish photos | Supabase Storage, S3 protocol (`S3_*` variables) |

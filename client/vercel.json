@@ -1,14 +1,12 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://resto-api-xvuz.onrender.com/api/$1" },
-    { "source": "/admin/(.*)", "destination": "https://resto-api-xvuz.onrender.com/admin/$1" },
-    { "source": "/static/(.*)", "destination": "https://resto-api-xvuz.onrender.com/static/$1" },
     { "source": "/media/(.*)", "destination": "https://resto-api-xvuz.onrender.com/media/$1" },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
-      "source": "/((?!api/|admin/|static/|media/).*)",
+      "source": "/((?!api/|media/).*)",
       "headers": [
         { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com https://*.supabase.co; connect-src 'self' wss://resto-api-xvuz.onrender.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },

@@ -28,7 +28,6 @@ router.register('reviews', service.ReviewViewSet, basename='review')
 
 urlpatterns = [
     path('healthz/', healthz),
-    path('admin/', admin.site.urls),
     path('api/auth/token/', accounts.LoginView.as_view()),
     path('api/auth/token/refresh/', accounts.RefreshView.as_view()),
     path('api/auth/logout/', accounts.LogoutView.as_view()),
@@ -44,3 +43,6 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema')),
     path('api/', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.ADMIN_ENABLED:
+    urlpatterns.append(path('admin/', admin.site.urls))

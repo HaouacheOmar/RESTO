@@ -33,6 +33,10 @@ DEBUG = os.environ.get('DEBUG', '1') == '1'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o]
 
+# Django admin: off where the manager's password is public (the demo); sessions are only used by the admin.
+ADMIN_ENABLED = os.environ.get('ADMIN_ENABLED', '1') == '1'
+SESSION_COOKIE_AGE = 12 * 60 * 60
+
 if not DEBUG:
     if SECRET_KEY == 'dev-insecure-key':
         raise ImproperlyConfigured('Set SECRET_KEY when DEBUG=0.')
@@ -58,7 +62,7 @@ if os.environ.get('SENTRY_DSN') and not TESTING:
 
 INSTALLED_APPS = [
     'daphne',
-    'django.contrib.admin',
+    'config.apps.RestoAdminConfig',  # django.contrib.admin with RestoAdminSite
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

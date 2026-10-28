@@ -471,6 +471,27 @@ class PasswordResetTests(APITestCase):
         self.assertEqual(self.client.post('/api/auth/token/refresh/').status_code, 401)  # old session revoked
 
 
+class AdminTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def test_admin_is_for_the_manager_only(self):
+        chef = User.objects.create_user(username='chef', password='Chef-pass-2026!', role=R.CHEF, is_staff=True)
+        self.client.force_login(chef)
+        self.assertEqual(self.client.get('/admin/').status_code, 302)  # sent back to the login page
+        manager = User.objects.create_user(username='boss', password='x', role=R.ADMIN_MANAGER, is_staff=True)
+        self.client.force_login(manager)
+        self.assertEqual(self.client.get('/admin/').status_code, 200)
+
+    def test_admin_login_locks_after_five_failures(self):
+        User.objects.create_user(username='boss', password='Boss-pass-2026!', role=R.ADMIN_MANAGER, is_staff=True)
+        url = '/admin/login/?next=/admin/'
+        for _ in range(5):
+            self.assertEqual(self.client.post(url, {'username': 'boss', 'password': 'wrong'}).status_code, 200)
+        self.assertEqual(self.client.post(url, {'username': 'boss', 'password': 'Boss-pass-2026!'}).status_code, 429)
+
+
 class SeedDemoTests(APITestCase):
     def test_seed_is_idempotent_and_usable(self):
         from io import StringIO

@@ -12,6 +12,7 @@ services:
       - { key: DEBUG, value: "0" }
       - { key: SECRET_KEY, generateValue: true }
       - { key: TIME_ZONE, value: Africa/Algiers }
+      - { key: ADMIN_ENABLED, value: "0" }           # the demo publishes the manager password: no Django admin
       - { key: NUM_PROXIES, value: "2" }             # Vercel + Render in front of Django (rate limits per client IP)
       - { key: SENTRY_DSN, sync: false }            # optional: error tracking
       - { key: FRONTEND_URL, value: https://resto-ruby-nine.vercel.app }  # links in emails

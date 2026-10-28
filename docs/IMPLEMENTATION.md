@@ -179,7 +179,7 @@ Les tests de `service/tests.py` sont regroupés par domaine : réservations, Sé
 
 ### Démo en ligne
 
-- **Frontend** : Vercel ([resto-ruby-nine.vercel.app](https://resto-ruby-nine.vercel.app)). `client/vercel.json` réécrit `/api`, `/admin`, `/static` et `/media` vers l'API : le navigateur reste sur une seule origine, donc le cookie de rafraîchissement `SameSite=Strict` fonctionne. Vercel ne relaie pas les WebSockets : le build reçoit `VITE_WS_URL` (domaine de l'API) et le socket s'y connecte directement, avec le jeton en paramètre.
+- **Frontend** : Vercel ([resto-ruby-nine.vercel.app](https://resto-ruby-nine.vercel.app)). `client/vercel.json` réécrit `/api` et `/media` vers l'API : le navigateur reste sur une seule origine, donc le cookie de rafraîchissement `SameSite=Strict` fonctionne. Vercel ne relaie pas les WebSockets : le build reçoit `VITE_WS_URL` (domaine de l'API) et le socket s'y connecte directement, avec le jeton en paramètre.
 - **API** : Render, image Docker de `server/` décrite par `render.yaml`. `ALLOWED_HOSTS` contient aussi le domaine Vercel, car le validateur d'origine des WebSockets le compare à l'en-tête `Origin`.
 - **Base de données** : PostgreSQL Supabase via le pooler de session (IPv4), `POSTGRES_SSLMODE=require`. L'API de données Supabase est désactivée : seules les requêtes de Django atteignent les tables.
 - **Photos** : Supabase Storage par le protocole S3 (`django-storages`), bucket public `media` ; sans `S3_BUCKET`, les photos restent dans `media/`.
@@ -190,6 +190,7 @@ Les tests de `service/tests.py` sont regroupés par domaine : réservations, Sé
 - **Limitation de débit** (DRF, compteurs dans Redis) : 120 requêtes/min par IP anonyme, 600/min par utilisateur, et par IP : connexion 10/min, rafraîchissement 30/min, inscription 20/h, candidature 10/h. Au-delà : `429`. `NUM_PROXIES=2` en production (Vercel puis Render) pour compter la vraie IP du client dans `X-Forwarded-For`.
 - **Santé** : `GET /healthz/` renvoie `{"database": "ok", "redis": "ok"}` ; `503` seulement si la base est injoignable (sans Redis l'API fonctionne, sans temps réel). C'est le contrôle de santé de Render.
 - **E-mails** : SMTP si `EMAIL_HOST` est défini (`EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`), sinon affichés dans les journaux. `FRONTEND_URL` construit les liens. Les comptes de démo ont des adresses `@resto.demo` qui ne reçoivent rien : personne ne peut réinitialiser leur mot de passe.
+- **Administration Django** : réservée au rôle gérant (même un compte `is_staff` d'un autre rôle est refusé), bloquée 15 min après 5 échecs de connexion depuis une IP (429), sessions de 12 h. Elle n'est servie que sur le domaine de l'API (pas via Vercel), et coupée sur la démo publique (`ADMIN_ENABLED=0`), dont le mot de passe gérant est publié. En production réelle : un superutilisateur distinct, au mot de passe privé.
 - **Erreurs** : Sentry, actif seulement si `SENTRY_DSN` (API) ou `VITE_SENTRY_DSN` (build du frontend) est défini ; aucune donnée personnelle envoyée. Sans DSN au build, le code Sentry n'est même pas inclus.
 - **En-têtes du frontend** (`client/vercel.json`) : Content-Security-Policy (scripts du site seulement ; images Unsplash et Supabase ; polices Google ; WebSocket vers l'API ; Sentry), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
 
