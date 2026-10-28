@@ -14,6 +14,7 @@ const ENDPOINTS = {
   passwordReset: '/api/auth/password/reset/',
   passwordResetConfirm: '/api/auth/password/reset/confirm/',
   me: '/api/auth/me/',
+  realtimeTicket: '/api/realtime/ticket/',
   reservations: '/api/reservations/',
   reservationCancel: (id: number) => `/api/reservations/${id}/cancel/`,
   reservationConfirm: (id: number) => `/api/reservations/${id}/confirm/`,
@@ -213,13 +214,13 @@ export function usePagedApi<T>(endpoint: Endpoint, query?: Query, step = PAGE_ST
   }
 }
 
-/** WebSocket URL with a freshly refreshed token, or null when logged out. */
+/** WebSocket URL with a single-use ticket (the JWT never goes in a URL), or null when logged out. */
 export async function realtimeUrl(): Promise<string | null> {
-  const token = await refreshAccess()
-  if (!token) return null
+  if (!(await refreshAccess())) return null
+  const { ticket } = await api<{ ticket: string }>('realtimeTicket', { method: 'POST' })
   // VITE_WS_URL: the backend's own origin when the host proxying /api can't proxy WebSockets (Vercel)
   const base = import.meta.env.VITE_WS_URL ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  return `${base}${ENDPOINTS.realtime}?token=${encodeURIComponent(token)}`
+  return `${base}${ENDPOINTS.realtime}?ticket=${encodeURIComponent(ticket)}`
 }
 
 // ---------------------------------------------------------------------------------------------

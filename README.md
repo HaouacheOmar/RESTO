@@ -54,7 +54,7 @@ Then open **http://localhost:8088**. The stack starts PostgreSQL, Redis, the Dja
 - **http://localhost:8088/**: landing page (live menu and dish of the day).
 - **http://localhost:8088/api/docs/**: interactive API (log in with `POST /api/auth/token/`, then *Authorize*).
 - **http://localhost:8088/admin/**: back office (`manager` account).
-- **ws://localhost:8088/ws/?token=<access token>**: live events for the logged-in role.
+- **ws://localhost:8088/ws/?ticket=<ticket>**: live events for the logged-in role (get a single-use ticket from `POST /api/realtime/ticket/`).
 
 Demo accounts: `manager`, `reservations`, `chef`, `waiter`, `cashier`, `driver`, `parking`, `stock`, `client`, all with the password `demo-resto-2026`.
 

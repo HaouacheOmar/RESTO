@@ -565,7 +565,7 @@ class RealtimeTests(APITransactionTestCase):
 
         self.assertEqual(async_to_sync(scenario)(), 'ping')
 
-    def test_socket_auth_via_jwt_query_token(self):
+    def test_socket_auth_via_single_use_ticket(self):
         from rest_framework_simplejwt.tokens import AccessToken
 
         from config.asgi import application
@@ -577,6 +577,11 @@ class RealtimeTests(APITransactionTestCase):
             await ws.disconnect()
             return connected
 
-        self.assertTrue(async_to_sync(connect)(f'?token={AccessToken.for_user(user)}'))
-        self.assertFalse(async_to_sync(connect)('?token=garbage'))
+        self.assertEqual(self.client.post('/api/realtime/ticket/').status_code, 401)
+        self.client.force_authenticate(user)
+        ticket = self.client.post('/api/realtime/ticket/').json()['ticket']
+        self.assertTrue(async_to_sync(connect)(f'?ticket={ticket}'))
+        self.assertFalse(async_to_sync(connect)(f'?ticket={ticket}'))  # single use
+        self.assertFalse(async_to_sync(connect)('?ticket=garbage'))
+        self.assertFalse(async_to_sync(connect)(f'?token={AccessToken.for_user(user)}'))  # JWTs no longer accepted in URLs
         self.assertFalse(async_to_sync(connect)(''))

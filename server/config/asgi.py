@@ -9,12 +9,12 @@ from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
 from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
 from django.urls import path  # noqa: E402
 
-from accounts.middleware import JWTQueryAuthMiddleware  # noqa: E402
+from accounts.middleware import TicketAuthMiddleware  # noqa: E402
 from service.consumers import NotificationConsumer  # noqa: E402
 
 application = ProtocolTypeRouter({
     'http': django_app,
-    'websocket': AllowedHostsOriginValidator(JWTQueryAuthMiddleware(URLRouter([
+    'websocket': AllowedHostsOriginValidator(TicketAuthMiddleware(URLRouter([
         path('ws/', NotificationConsumer.as_asgi()),
     ]))),
 })

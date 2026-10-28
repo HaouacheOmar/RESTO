@@ -207,7 +207,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     'TITLE': 'RESTO API',
     'DESCRIPTION': 'Distributed restaurant management. Domain vocabulary: CONTEXT.md. '
-                   'Real-time events: ws://<host>/ws/?token=<JWT access>.',
+                   'Real-time events: ws://<host>/ws/?ticket=<single-use ticket from POST /api/realtime/ticket/>.',
     'VERSION': '1.0.0',
     'COMPONENT_SPLIT_REQUEST': True,
 }

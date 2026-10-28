@@ -25,6 +25,7 @@ from service.events import broadcast
 
 from config.lists import ScopedListMixin
 
+from .middleware import issue_ticket
 from .models import JobApplication, User
 from .permissions import PUBLIC, RoleViewSet
 from .serializers import (JobApplicationSerializer, PasswordResetConfirmSerializer, RegisterSerializer,
@@ -150,6 +151,14 @@ class PasswordResetConfirmView(APIView):
         for token in OutstandingToken.objects.filter(user=user):
             BlacklistedToken.objects.get_or_create(token=token)
         return Response(status=204)
+
+
+class RealtimeTicketView(APIView):
+    """Single-use ticket (30 s) to open the WebSocket: `wss://<api>/ws/?ticket=<ticket>`."""
+
+    @extend_schema(request=None, responses=inline_serializer('RealtimeTicket', {'ticket': serializers.CharField()}))
+    def post(self, request):
+        return Response({'ticket': issue_ticket(request.user)})
 
 
 class MeView(generics.RetrieveAPIView):

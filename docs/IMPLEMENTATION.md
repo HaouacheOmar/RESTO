@@ -23,7 +23,7 @@ Tout se lance avec `docker compose up --build` à la racine (`docker-compose.yml
 ```
   Espaces clients (web / mobile / PWA)
   gérant · réservation · chef · serveur · caisse · livreur · stationneur · stock · client
-         │  HTTPS (REST + JWT)            │  WebSocket ws://…/ws/?token=<JWT>
+         │  HTTPS (REST + JWT)            │  WebSocket ws://…/ws/?ticket=<ticket>
          ▼                                ▼
   ┌───────────────────────────────────────────────────────┐
   │ Daphne (ASGI) — config/asgi.py                         │
@@ -96,7 +96,7 @@ Une ligne de commande porte **soit** `dish` (Carte), **soit** `daily_special` (P
 
 ## 5. Temps réel (WebSockets)
 
-Connexion : `ws://<hôte>/ws/?token=<JWT access>`. Un jeton absent ou invalide entraîne le refus de la connexion. Chaque socket rejoint les groupes de son rôle, plus un groupe personnel `user_<id>`. Format des messages : `{"event": "...", "payload": {...}}`.
+Connexion : `POST /api/realtime/ticket/` (authentifié) renvoie un ticket aléatoire à usage unique, valable 30 s, puis `ws://<hôte>/ws/?ticket=<ticket>`. Le JWT ne passe donc jamais dans une URL, où il finirait dans les journaux des proxys. Un ticket absent, invalide, expiré ou déjà utilisé entraîne le refus de la connexion (les tickets sont dans Redis, partagés par toutes les instances). Si la demande de ticket échoue, le client réessaie avec le même délai croissant qu'après une coupure. Chaque socket rejoint les groupes de son rôle, plus un groupe personnel `user_<id>`. Format des messages : `{"event": "...", "payload": {...}}`.
 
 | Groupe | Membres | Événements |
 | :--- | :--- | :--- |

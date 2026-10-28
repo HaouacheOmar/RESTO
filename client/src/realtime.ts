@@ -37,7 +37,12 @@ export function useRealtime(enabled: boolean) {
     }
 
     async function connect() {
-      const url = await realtimeUrl()
+      let url: string | null
+      try {
+        url = await realtimeUrl()
+      } catch {
+        return retry()  // the ticket request failed (network, API waking up): try again with backoff
+      }
       if (stopped) return
       if (!url) return setStatus('offline')
       socket = new WebSocket(url)

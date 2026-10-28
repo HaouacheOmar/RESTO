@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/auth/password/reset/', accounts.PasswordResetView.as_view()),
     path('api/auth/password/reset/confirm/', accounts.PasswordResetConfirmView.as_view()),
     path('api/auth/me/availability/', accounts.AvailabilityView.as_view()),
+    path('api/realtime/ticket/', accounts.RealtimeTicketView.as_view()),
     path('api/menu/', catalog.MenuView.as_view()),
     path('api/dashboard/', service.DashboardView.as_view()),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
