@@ -1,23 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import DailySpecial, Dish, Ingredient, RestaurantTable, StockRequest, Supplier
-
-
-class SupplierSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Supplier
-        fields = '__all__'
-
-
-class RestaurantTableSerializer(serializers.ModelSerializer):
-    is_occupied = serializers.BooleanField(read_only=True, default=False)  # annotated: has an open Séance
-    # annotated: a reservation not yet seated holds the table now (no walk-in possible)
-    reserved_at = serializers.DateTimeField(read_only=True, default=None, allow_null=True)
-
-    class Meta:
-        model = RestaurantTable
-        fields = '__all__'
+from .models import DailySpecial, Dish
 
 
 class DishSerializer(serializers.ModelSerializer):
@@ -49,22 +33,3 @@ class DailySpecialSerializer(serializers.ModelSerializer):
         if moving and value < timezone.localdate():
             raise serializers.ValidationError('Cette date est déjà passée.')
         return value
-
-
-class IngredientSerializer(serializers.ModelSerializer):
-    # Carte dishes whose Recette uses it: what a Rupture takes off the Menu
-    dishes = serializers.SlugRelatedField(many=True, read_only=True, slug_field='name')
-
-    class Meta:
-        model = Ingredient
-        fields = '__all__'
-
-
-class StockRequestSerializer(serializers.ModelSerializer):
-    ingredient_name = serializers.CharField(source='ingredient.name', read_only=True)
-    supplier_name = serializers.CharField(source='supplier.name', read_only=True, default=None)
-
-    class Meta:
-        model = StockRequest
-        fields = '__all__'
-        read_only_fields = ['requested_by', 'supplier', 'status']

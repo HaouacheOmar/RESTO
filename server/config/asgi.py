@@ -10,7 +10,7 @@ from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E40
 from django.urls import path  # noqa: E402
 
 from accounts.middleware import TicketAuthMiddleware  # noqa: E402
-from service.consumers import NotificationConsumer  # noqa: E402
+from realtime.consumers import NotificationConsumer  # noqa: E402
 
 application = ProtocolTypeRouter({
     'http': django_app,

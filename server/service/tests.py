@@ -14,10 +14,11 @@ from django.utils import timezone
 from rest_framework.test import APITestCase, APITransactionTestCase
 
 from accounts.models import User
-from catalog.models import DailySpecial, Dish, Ingredient, RestaurantTable, StockRequest, Supplier
+from catalog.models import DailySpecial, Dish
+from inventory.models import Ingredient, StockRequest, Supplier
+from realtime.consumers import NotificationConsumer
 
-from .consumers import NotificationConsumer
-from .models import Addition, Order, Reservation, Seance
+from .models import Addition, Order, Reservation, RestaurantTable, Seance
 
 R = User.Role
 TOMORROW = timezone.now().replace(microsecond=0) + timedelta(days=1)

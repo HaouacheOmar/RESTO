@@ -4,8 +4,10 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.models import User
-from catalog.models import DailySpecial, Dish, Ingredient, RestaurantTable, Supplier
+from accounts.api import User
+from catalog.api import DailySpecial, Dish
+from inventory.api import Ingredient, Supplier
+from service.models import RestaurantTable
 
 PASSWORD = 'demo-resto-2026'
 R = User.Role

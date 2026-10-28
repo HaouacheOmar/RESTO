@@ -2,9 +2,28 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
-from catalog.models import DailySpecial, Dish, RestaurantTable
-
 USER = settings.AUTH_USER_MODEL
+DISH, DAILY_SPECIAL = 'catalog.Dish', 'catalog.DailySpecial'  # by name: no import of catalog's models
+
+
+class RestaurantTable(models.Model):
+    """A table of the floor plan. Moved here from `catalog` (the table keeps its old name, no data copied)."""
+
+    class Zone(models.TextChoices):
+        STANDARD = 'STANDARD'
+        VIP = 'VIP'
+
+    number = models.PositiveIntegerField(unique=True)
+    capacity = models.PositiveSmallIntegerField()
+    zone = models.CharField(max_length=10, choices=Zone.choices, default=Zone.STANDARD)
+
+    class Meta:
+        db_table = 'catalog_restauranttable'
+        ordering = ['number']
+        constraints = [models.CheckConstraint(condition=Q(capacity__gt=0), name='table_capacity_positive')]
+
+    def __str__(self):
+        return f'Table {self.number} ({self.capacity}p, {self.zone})'
 
 
 class Reservation(models.Model):
@@ -143,8 +162,8 @@ class Order(models.Model):
 class OrderItem(models.Model):
     """A line: either a Carte dish or the Plat du jour."""
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    dish = models.ForeignKey(Dish, on_delete=models.PROTECT, null=True, blank=True)
-    daily_special = models.ForeignKey(DailySpecial, on_delete=models.PROTECT, null=True, blank=True)
+    dish = models.ForeignKey(DISH, on_delete=models.PROTECT, null=True, blank=True)
+    daily_special = models.ForeignKey(DAILY_SPECIAL, on_delete=models.PROTECT, null=True, blank=True)
     quantity = models.PositiveSmallIntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)  # frozen at order time
 
@@ -166,8 +185,8 @@ class Review(models.Model):
     client = models.ForeignKey(USER, on_delete=models.CASCADE, related_name='reviews')
     rating = models.PositiveSmallIntegerField()
     comment = models.TextField(blank=True)
-    dish = models.ForeignKey(Dish, on_delete=models.CASCADE, null=True, blank=True, related_name='reviews')
-    daily_special = models.ForeignKey(DailySpecial, on_delete=models.CASCADE, null=True, blank=True,
+    dish = models.ForeignKey(DISH, on_delete=models.CASCADE, null=True, blank=True, related_name='reviews')
+    daily_special = models.ForeignKey(DAILY_SPECIAL, on_delete=models.CASCADE, null=True, blank=True,
                                       related_name='reviews')
     staff = models.ForeignKey(USER, on_delete=models.CASCADE, null=True, blank=True, related_name='reviews_received')
     created_at = models.DateTimeField(auto_now_add=True)

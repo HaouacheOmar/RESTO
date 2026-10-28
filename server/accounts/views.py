@@ -21,7 +21,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from service.events import broadcast
+from realtime.api import broadcast
 
 from config.lists import ScopedListMixin
 

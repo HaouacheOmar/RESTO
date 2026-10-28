@@ -1,6 +1,6 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from accounts.models import User
+from accounts.api import User
 
 R = User.Role
 

@@ -28,7 +28,8 @@ Tout se lance avec `docker compose up --build` à la racine (`docker-compose.yml
   ┌───────────────────────────────────────────────────────┐
   │ Daphne (ASGI) — config/asgi.py                         │
   │   http → Django + DRF        websocket → Consumer       │
-  │  accounts   catalog   service                          │
+  │  accounts  catalog  inventory  service  analytics       │
+  │  realtime                                               │
   └──────────────┬──────────────────────────┬─────────────┘
                  ▼                          ▼
            PostgreSQL                 Redis (channel layer)
@@ -36,12 +37,19 @@ Tout se lance avec `docker compose up --build` à la racine (`docker-compose.yml
 
 Le système est distribué au sens où plusieurs postes indépendants partagent un état central et reçoivent des notifications en temps réel. Le channel layer Redis permet de lancer plusieurs instances Daphne derrière un load balancer sans changer le code.
 
-| App | Contenu |
-| :--- | :--- |
-| `config/` | settings (variables d'environnement), routes, ASGI |
-| `accounts/` | `User` (rôle, disponibilité), `JobApplication`, permissions par rôle, middleware JWT WebSocket |
-| `catalog/` | `Supplier`, `RestaurantTable`, `Dish` (Carte + Recette), `DailySpecial` (Plat du jour), `Ingredient`, `StockRequest` |
-| `service/` | `Reservation`, `Seance`, `Order` / `OrderItem`, `Addition`, `Review`, dashboard, consumer, `broadcast` |
+C'est un **monolithe modulaire** : un seul déploiement, mais des modules aux frontières contrôlées. Chaque module expose ce que les autres peuvent utiliser dans son `api.py` ; ses vues, sérialiseurs, modèles et fonctions internes restent privés. Le fichier `server/.importlinter` le vérifie en CI (`lint-imports`) : un import qui contourne un `api.py` fait échouer le build. Les relations entre modules passent par le nom du modèle (`'catalog.Dish'`), sans import.
+
+| Module | Contenu | Expose (`api.py`) |
+| :--- | :--- | :--- |
+| `config/` | settings (variables d'environnement), routes, ASGI, santé, pagination des listes, administration | (le câblage, peut tout importer) |
+| `accounts/` | `User` (rôle, disponibilité), `JobApplication`, permissions par rôle, tickets WebSocket | `User`, permissions par rôle |
+| `catalog/` | `Dish` (Carte + Recette), `DailySpecial` (Plat du jour), Menu | `Dish`, `DailySpecial` |
+| `inventory/` | `Ingredient` (Ruptures), `StockRequest`, `Supplier` | les trois modèles (lecture : tableau de bord, données de démo) |
+| `service/` | la salle : `RestaurantTable`, `Reservation`, `Seance`, `Order` / `OrderItem`, `Addition`, `Review` | ses modèles, `daily_special_stats()` (ventes et notes d'un Plat du jour) |
+| `analytics/` | tableau de bord du gérant (lecture seule, sans modèle) | rien |
+| `realtime/` | `broadcast()`, consumer WebSocket (sans modèle) | `broadcast` |
+
+`inventory/` et la table du plan de salle viennent de `catalog/` : leurs tables gardent leur nom (`Meta.db_table`), et les migrations de déplacement ne changent que l'état de Django, sans aucune requête SQL ni copie de données.
 
 ---
 

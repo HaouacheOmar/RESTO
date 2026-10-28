@@ -72,9 +72,12 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',  # logout revokes the refresh token
     'channels',
     'drf_spectacular',
-    'accounts',
-    'catalog',
-    'service',
+    'accounts',    # identity, roles, sign-up, job applications
+    'catalog',     # the Carte and the Plat du jour
+    'inventory',   # ingredients, Ruptures, restock requests, suppliers
+    'service',     # dining: tables, reservations, Séances, orders, Additions, reviews
+    'analytics',   # the manager's dashboard
+    'realtime',    # live events over WebSockets
 ]
 
 MIDDLEWARE = [

@@ -27,7 +27,7 @@ A distributed restaurant management system. Every role in the restaurant (manage
                           ── WebSocket ─────────┤
                                                 ▼
                      Daphne (ASGI): Django + DRF │ Channels consumer
-                          accounts · catalog · service
+        accounts · catalog · inventory · service · analytics · realtime
                                 │                     │
                            PostgreSQL          Redis (channel layer)
 ```

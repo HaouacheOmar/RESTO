@@ -1,0 +1,115 @@
+# Module boundaries of the monolith, checked in CI (`lint-imports`).
+# A module may use another one only through its `api.py`; views, serializers, models and helpers stay private.
+# `config` is the wiring (settings, URLs, ASGI) and may import anything; tests may too.
+
+[importlinter]
+root_packages =
+    accounts
+    catalog
+    inventory
+    service
+    analytics
+    realtime
+    config
+
+[importlinter:contract:accounts-api]
+name = The other modules use accounts only through accounts.api
+type = forbidden
+source_modules =
+    catalog
+    inventory
+    service
+    analytics
+    realtime
+forbidden_modules =
+    accounts
+ignore_imports =
+    ** -> accounts.api
+    *.tests -> accounts.**
+allow_indirect_imports = True
+unmatched_ignore_imports_alerting = none
+
+[importlinter:contract:catalog-api]
+name = The other modules use catalog only through catalog.api
+type = forbidden
+source_modules =
+    accounts
+    inventory
+    service
+    analytics
+    realtime
+forbidden_modules =
+    catalog
+ignore_imports =
+    ** -> catalog.api
+    *.tests -> catalog.**
+allow_indirect_imports = True
+unmatched_ignore_imports_alerting = none
+
+[importlinter:contract:inventory-api]
+name = The other modules use inventory only through inventory.api
+type = forbidden
+source_modules =
+    accounts
+    catalog
+    service
+    analytics
+    realtime
+forbidden_modules =
+    inventory
+ignore_imports =
+    ** -> inventory.api
+    *.tests -> inventory.**
+allow_indirect_imports = True
+unmatched_ignore_imports_alerting = none
+
+[importlinter:contract:service-api]
+name = The other modules use service only through service.api
+type = forbidden
+source_modules =
+    accounts
+    catalog
+    inventory
+    analytics
+    realtime
+forbidden_modules =
+    service
+ignore_imports =
+    ** -> service.api
+    *.tests -> service.**
+allow_indirect_imports = True
+unmatched_ignore_imports_alerting = none
+
+[importlinter:contract:analytics-api]
+name = The other modules use analytics only through analytics.api
+type = forbidden
+source_modules =
+    accounts
+    catalog
+    inventory
+    service
+    realtime
+forbidden_modules =
+    analytics
+ignore_imports =
+    ** -> analytics.api
+    *.tests -> analytics.**
+allow_indirect_imports = True
+unmatched_ignore_imports_alerting = none
+
+[importlinter:contract:realtime-api]
+name = The other modules use realtime only through realtime.api
+type = forbidden
+source_modules =
+    accounts
+    catalog
+    inventory
+    service
+    analytics
+forbidden_modules =
+    realtime
+ignore_imports =
+    ** -> realtime.api
+    *.tests -> realtime.**
+allow_indirect_imports = True
+unmatched_ignore_imports_alerting = none

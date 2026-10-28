@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Addition, Order, OrderItem, Reservation, Review, Seance
+from .models import Addition, Order, OrderItem, Reservation, RestaurantTable, Review, Seance
 
 
 class OrderItemInline(admin.TabularInline):
@@ -8,6 +8,7 @@ class OrderItemInline(admin.TabularInline):
     extra = 0
 
 
+admin.site.register(RestaurantTable, list_display=['number', 'capacity', 'zone'], list_filter=['zone'])
 admin.site.register(Reservation, list_display=['client', 'reservation_time', 'guest_count', 'zone', 'table', 'status',
                                                 'parking_status', 'parking_spot'], list_filter=['status', 'zone'])
 admin.site.register(Seance, list_display=['id', 'table', 'name', 'status', 'opened_at', 'closed_at'],

@@ -6,7 +6,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
 from accounts import views as accounts
+from analytics import views as analytics
 from catalog import views as catalog
+from inventory import views as inventory
 from service import views as service
 
 from .health import healthz
@@ -14,12 +16,12 @@ from .health import healthz
 router = DefaultRouter()
 router.register('users', accounts.UserViewSet, basename='user')
 router.register('job-applications', accounts.JobApplicationViewSet)
-router.register('suppliers', catalog.SupplierViewSet)
-router.register('tables', catalog.RestaurantTableViewSet, basename='table')
+router.register('suppliers', inventory.SupplierViewSet)
+router.register('tables', service.RestaurantTableViewSet, basename='table')
 router.register('dishes', catalog.DishViewSet, basename='dish')
 router.register('daily-specials', catalog.DailySpecialViewSet, basename='dailyspecial')
-router.register('ingredients', catalog.IngredientViewSet)
-router.register('stock-requests', catalog.StockRequestViewSet)
+router.register('ingredients', inventory.IngredientViewSet)
+router.register('stock-requests', inventory.StockRequestViewSet)
 router.register('reservations', service.ReservationViewSet, basename='reservation')
 router.register('orders', service.OrderViewSet, basename='order')
 router.register('seances', service.SeanceViewSet, basename='seance')
@@ -38,7 +40,7 @@ urlpatterns = [
     path('api/auth/me/availability/', accounts.AvailabilityView.as_view()),
     path('api/realtime/ticket/', accounts.RealtimeTicketView.as_view()),
     path('api/menu/', catalog.MenuView.as_view()),
-    path('api/dashboard/', service.DashboardView.as_view()),
+    path('api/dashboard/', analytics.DashboardView.as_view()),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema')),
     path('api/', include(router.urls)),

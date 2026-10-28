@@ -6,12 +6,22 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from accounts.models import User
-from catalog.models import Dish, RestaurantTable
+from accounts.api import User
+from catalog.api import Dish
 
-from .models import Addition, Order, OrderItem, Reservation, Review, Seance
+from .models import Addition, Order, OrderItem, Reservation, RestaurantTable, Review, Seance
 
 REVIEW_WINDOW = timedelta(days=7)
+
+
+class RestaurantTableSerializer(serializers.ModelSerializer):
+    is_occupied = serializers.BooleanField(read_only=True, default=False)  # annotated: has an open Séance
+    # annotated: a reservation not yet seated holds the table now (no walk-in possible)
+    reserved_at = serializers.DateTimeField(read_only=True, default=None, allow_null=True)
+
+    class Meta:
+        model = RestaurantTable
+        fields = '__all__'
 
 
 class ReservationSerializer(serializers.ModelSerializer):
