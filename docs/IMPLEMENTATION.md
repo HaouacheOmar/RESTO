@@ -177,7 +177,15 @@ docker compose up -d postgres redis
 ../venv/Scripts/python.exe manage.py test              # PostgreSQL et Redis doivent tourner
 ```
 
-Les tests de `service/tests.py` sont regroupés par domaine : réservations, Séances, livraisons, Menu et stock, avis, comptes, temps réel.
+Les tests de `service/tests.py` sont regroupés par domaine : réservations, Séances, livraisons, Menu et stock, avis, comptes, temps réel, sécurité (limites, réinitialisation du mot de passe, administration).
+
+**Parcours de bout en bout** (`e2e/`, Playwright) sur la pile Docker complète, chaque rôle dans sa propre session :
+
+- **Salle** : un nouveau client s'inscrit et réserve ; le responsable (écran déjà ouvert) confirme et installe ; le serveur commande ; la caisse (écran déjà ouvert) encaisse par carte et le ticket s'affiche.
+- **Livraison** : le client commande ; le responsable attribue le livreur ; le téléphone du livreur reçoit la course, il la livre et l'encaisse ; la commande du client passe à « Livrée ».
+- **Stock** : une Rupture retire le plat du Menu public et apparaît en direct chez le gérant ; la fin de rupture le remet.
+
+Les écrans qui reçoivent sont ouverts avant l'action : ce qui y apparaît sans rechargement prouve le temps réel. `RATE_LIMIT_SCALE=100` multiplie les limites de débit sur cette pile (une seule IP joue les neuf rôles) ; `BASE_URL` vise un autre environnement (jamais la production : les parcours créent des données). En CI, le job `e2e` monte la pile, attend `/healthz/`, lance les parcours et joint le rapport en cas d'échec ; le job `frontend` vérifie le lint, les types et le build.
 
 ---
 

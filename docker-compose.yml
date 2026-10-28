@@ -30,6 +30,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_SCALE: ${RATE_LIMIT_SCALE:-1}  # the end-to-end tests raise it
     volumes: [media:/app/media]
     depends_on:
       postgres: { condition: service_healthy }

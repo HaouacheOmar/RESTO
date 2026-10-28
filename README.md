@@ -71,6 +71,16 @@ cd ../client && npm install && npm run dev # app on :5173, proxied to the API
 
 Run the backend tests (PostgreSQL and Redis up): `cd server && python manage.py test`.
 
+End-to-end journeys (Playwright) across the role spaces, against the whole stack:
+
+```bash
+RATE_LIMIT_SCALE=100 docker compose up -d --build   # one IP plays all nine roles: raise the rate limits
+cd e2e && npm ci && npx playwright install chromium
+npx playwright test                                 # BASE_URL=https://staging… to target another environment
+```
+
+CI runs the backend tests, the module boundaries (`lint-imports`), the frontend lint and build, and these journeys on a throwaway Docker stack.
+
 ## Documentation
 
 - [`CONTEXT.md`](CONTEXT.md): domain glossary (Séance, Addition, Carte, Plat du jour, Rupture…).

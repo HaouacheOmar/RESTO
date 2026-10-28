@@ -191,6 +191,8 @@ if os.environ.get('S3_BUCKET'):  # production: photos in an S3-compatible bucket
 
 AUTH_USER_MODEL = 'accounts.User'
 
+RATE_LIMIT_SCALE = int(os.environ.get('RATE_LIMIT_SCALE', '1'))
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -201,12 +203,13 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': ['rest_framework.throttling.AnonRateThrottle',
                                  'rest_framework.throttling.UserRateThrottle',
                                  'rest_framework.throttling.ScopedRateThrottle'],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '120/min', 'user': '600/min',
+    # RATE_LIMIT_SCALE multiplies every limit: only the end-to-end stack raises it (one IP plays all nine roles).
+    'DEFAULT_THROTTLE_RATES': {scope: f'{count * RATE_LIMIT_SCALE}/{period}' for scope, (count, period) in {
+        'anon': (120, 'min'), 'user': (600, 'min'),
         # Public endpoints an attacker would hammer (ScopedRateThrottle, per client IP)
-        'login': '10/min', 'refresh': '30/min', 'register': '20/hour', 'job_application': '10/hour',
-        'password_reset': '5/hour', 'password_reset_confirm': '20/hour',
-    },
+        'login': (10, 'min'), 'refresh': (30, 'min'), 'register': (20, 'hour'), 'job_application': (10, 'hour'),
+        'password_reset': (5, 'hour'), 'password_reset_confirm': (20, 'hour'),
+    }.items()},
     # Proxies in front of Django (Vercel + Render = 2): the client IP is counted from the right of X-Forwarded-For
     'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '0')) or None,
 }
