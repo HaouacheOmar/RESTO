@@ -117,6 +117,8 @@ DATABASES = {
         'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
         'PORT': os.environ.get('POSTGRES_PORT', '5434'),
         'OPTIONS': {'sslmode': os.environ.get('POSTGRES_SSLMODE', 'prefer')},  # 'require' for Supabase
+        'CONN_MAX_AGE': int(os.environ.get('CONN_MAX_AGE', '60')),  # reuse connections (no TLS handshake per request)
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 

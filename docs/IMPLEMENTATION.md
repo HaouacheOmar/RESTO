@@ -59,7 +59,7 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | `POST auth/token/`, `auth/token/refresh/`, `auth/logout/` | public | Connexion (jeton d'accès dans la réponse, jeton de rafraîchissement en cookie `httpOnly`), rafraîchissement par le cookie, déconnexion (révocation) |
 | `GET auth/me/` | connecté | Profil |
 | `POST auth/me/availability/` | livreur | Début / fin de service (`AVAILABLE` ⇄ `OFFLINE`), refusé pendant une livraison ; annoncé au groupe `deliveries` |
-| `users/` (`?role=&availability=`) | gérant (lecture : + responsable) | Personnel, livreurs disponibles |
+| `users/` (`?role=&availability=`, `?staff=1` : sans les clients) | gérant (lecture : + responsable) | Personnel, livreurs disponibles |
 | `job-applications/` + `accept/`, `reject/` | dépôt public, reste gérant | Candidatures |
 | `suppliers/` | gérant | Fournisseurs |
 | `tables/` (champs calculés `is_occupied`, `reserved_at`) | lecture connecté, écriture gérant | Plan de salle : occupée (Séance ouverte) ou réservée maintenant (une réservation pas encore installée couvre l'heure actuelle : pas de client sans réservation possible) |
@@ -77,6 +77,17 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | `GET dashboard/` | gérant | Statistiques |
 
 Documentation interactive : **`/api/docs/`** (Swagger UI, bouton *Authorize* avec le jeton d'accès) et schéma OpenAPI 3 sur `/api/schema/`. La CI échoue si le schéma produit un avertissement.
+
+**Listes qui grandissent** (`reservations`, `orders`, `additions`, `seances`, `reviews`, `stock-requests`, `job-applications`, `daily-specials`, `users`) : elles ne reviennent jamais entières.
+
+- `?scope=active` : les éléments en cours, liste simple non paginée (bornée par l'activité réelle) : réservations en attente / confirmées / installées, commandes en attente / en livraison, Séances ouvertes, Additions des 7 derniers jours (encore notables), demandes de stock en cours, candidatures en attente, Plats du jour d'aujourd'hui et planifiés.
+- `?scope=history` : les terminés, du plus récent au plus ancien, paginés.
+- Sans `scope` : tout, paginé.
+- Pagination `limit` / `offset` (50 par défaut, 200 au plus), réponse `{count, next, previous, results}`. Un filtre qui borne déjà la liste la laisse non paginée : `additions/?date=`, `users/?role=` ou `?staff=1`.
+
+Côté frontend, `useApi` charge les listes `active` et `usePagedApi` les historiques (20 par 20, bouton « Voir plus »).
+
+Index ajoutés sur ce que filtrent les écrans : réservations `(status, reservation_time)`, commandes `(status, created_at)` et `(is_delivery, status)`, Séances `(status, opened_at)`, Additions `created_at`, demandes de stock `status`. Les connexions à PostgreSQL sont réutilisées 60 s (`CONN_MAX_AGE`, avec vérification de santé).
 
 Une ligne de commande porte **soit** `dish` (Carte), **soit** `daily_special` (Plat du jour). Une commande en salle se crée avec `table_number` (+ `seance_name` facultatif pour un client sans réservation) ; une livraison avec `delivery_address`.
 

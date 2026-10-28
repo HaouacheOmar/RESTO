@@ -1,9 +1,10 @@
 import { motion } from 'motion/react'
 import { useCallback, useState, type FormEvent } from 'react'
 
-import { api, errorText, formatDate, useApi, type Ingredient, type StockRequest, type User } from '../../api'
+import { api, errorText, formatDate, useApi, usePagedApi, type Ingredient, type StockRequest, type User } from '../../api'
 import { rise } from '../../motion'
 import { useLiveRefresh, type Notifications } from '../../realtime'
+import LoadMore from '../../ui/LoadMore'
 import Loading from '../../ui/Loading'
 import Tabs from '../../ui/Tabs'
 import Toast from '../../ui/Toast'
@@ -149,16 +150,19 @@ export default function StockSpace({ user }: { user: User }) {
   const [tab, select] = useTab(TAB_IDS)
   const [preset, setPreset] = useState<number | null>(null)
   const ingredients = useApi<Ingredient[]>('ingredients')
-  const requests = useApi<StockRequest[]>('stockRequests')
+  const requests = useApi<StockRequest[]>('stockRequests', { scope: 'active' })
+  const received = usePagedApi<StockRequest>('stockRequests', { scope: 'history' }, 10)
   const { reload: reloadIngredients } = ingredients
   const { reload: reloadRequests } = requests
-  const refresh = useCallback(() => { reloadIngredients(); reloadRequests() }, [reloadIngredients, reloadRequests])
+  const { reload: reloadReceived } = received
+  const refresh = useCallback(() => { reloadIngredients(); reloadRequests(); reloadReceived() },
+    [reloadIngredients, reloadRequests, reloadReceived])
   const { toast } = useLiveRefresh(refresh, NOTIFICATIONS)
 
   const all = ingredients.data ?? []
   const out = all.filter((i) => i.is_out_of_stock)
   const sorted = [...out, ...all.filter((i) => !i.is_out_of_stock)]  // Ruptures first
-  const open = (requests.data ?? []).filter((r) => r.status !== 'FULFILLED').length
+  const open = requests.data?.length ?? 0
 
   return (
     <main className="desk stock">
@@ -171,7 +175,8 @@ export default function StockSpace({ user }: { user: User }) {
         { id: 'ingredients', label: 'Ingrédients', count: out.length },
         { id: 'demandes', label: 'Demandes', count: open },
       ]} current={tab} onSelect={select} label="Stock">
-        {!ingredients.data || !requests.data ? <Loading failed={ingredients.failed || requests.failed} /> : tab === 'ingredients' ? (
+        {!ingredients.data || !requests.data || !received.items
+          ? <Loading failed={ingredients.failed || requests.failed || received.failed} /> : tab === 'ingredients' ? (
           <>
             <NewIngredient onCreated={refresh} />
             <ul className="card-list">
@@ -181,7 +186,10 @@ export default function StockSpace({ user }: { user: User }) {
               ))}
             </ul>
           </>
-        ) : <Requests ingredients={all} requests={requests.data} preset={preset} onChange={refresh} />}
+        ) : <>
+          <Requests ingredients={all} requests={[...requests.data, ...received.items]} preset={preset} onChange={refresh} />
+          <LoadMore hasMore={received.hasMore} onClick={received.loadMore} />
+        </>}
       </Tabs>
 
       <Toast toast={toast} />

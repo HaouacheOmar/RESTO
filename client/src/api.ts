@@ -189,6 +189,28 @@ export function useApi<T>(endpoint: Endpoint, query?: Query) {
   return { data, failed, reload }
 }
 
+/** A page of a growing list (`limit`/`offset` on the API). */
+export interface Page<T> { count: number; next: string | null; previous: string | null; results: T[] }
+
+const PAGE_STEP = 20
+const PAGE_MAX = 200  // the API's max_limit
+
+/**
+ * History lists, newest first: the first `PAGE_STEP` items, then `loadMore()` adds the next ones.
+ * `reload()` keeps everything already shown (it refetches with the current limit).
+ */
+export function usePagedApi<T>(endpoint: Endpoint, query?: Query, step = PAGE_STEP) {
+  const [limit, setLimit] = useState(step)
+  const { data, failed, reload } = useApi<Page<T>>(endpoint, { ...query, limit })
+  return {
+    items: data?.results ?? null,
+    hasMore: Boolean(data?.next) && limit < PAGE_MAX,
+    loadMore: () => setLimit((n) => Math.min(n + step, PAGE_MAX)),
+    failed,
+    reload,
+  }
+}
+
 /** WebSocket URL with a freshly refreshed token, or null when logged out. */
 export async function realtimeUrl(): Promise<string | null> {
   const token = await refreshAccess()

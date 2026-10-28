@@ -2,8 +2,9 @@ import { motion } from 'motion/react'
 import { Star } from 'lucide-react'
 import { useState } from 'react'
 
-import { api, formatDate, formatPrice, toErrors, useApi, type DailySpecial, type User } from '../../api'
+import { api, formatDate, formatPrice, toErrors, useApi, usePagedApi, type DailySpecial, type User } from '../../api'
 import { rise } from '../../motion'
+import LoadMore from '../../ui/LoadMore'
 import Loading from '../../ui/Loading'
 import Tabs from '../../ui/Tabs'
 import { useTab } from '../../ui/useTab'
@@ -156,12 +157,12 @@ export default function ChefSpace({ user }: { user: User }) {
     const now = new Date()
     return { today: localDay(now), tomorrow: localDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)) }
   })
-  const specials = useApi<DailySpecial[]>('dailySpecials')
+  const specials = useApi<DailySpecial[]>('dailySpecials', { scope: 'active' })  // today and planned
+  const history = usePagedApi<DailySpecial>('dailySpecials', { scope: 'history' })
 
   const all = specials.data ?? []
   const todays = all.find((s) => s.date === days.today)
   const planned = all.filter((s) => s.date > days.today).sort((a, b) => a.date.localeCompare(b.date))
-  const past = all.filter((s) => s.date < days.today)
 
   return (
     <main className="desk chef">
@@ -175,10 +176,13 @@ export default function ChefSpace({ user }: { user: User }) {
         { id: 'planning', label: 'Planifiés', count: planned.length },
         { id: 'historique', label: 'Historique' },
       ]} current={tab} onSelect={select} label="Plat du jour">
-        {!specials.data ? <Loading failed={specials.failed} />
-          : tab === 'aujourdhui' ? <Today special={todays} today={days.today} onChange={specials.reload} />
-            : tab === 'planning' ? <Planning specials={planned} tomorrow={days.tomorrow} onChange={specials.reload} />
-              : <History specials={past} />}
+        {tab === 'historique'
+          ? (history.items
+            ? <><History specials={history.items} /><LoadMore hasMore={history.hasMore} onClick={history.loadMore} /></>
+            : <Loading failed={history.failed} />)
+          : !specials.data ? <Loading failed={specials.failed} />
+            : tab === 'aujourdhui' ? <Today special={todays} today={days.today} onChange={specials.reload} />
+              : <Planning specials={planned} tomorrow={days.tomorrow} onChange={specials.reload} />}
       </Tabs>
     </main>
   )

@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Avg, Count, Exists, IntegerField, OuterRef, Subquery, Sum
+from django.db.models import Avg, Count, Exists, IntegerField, OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from accounts.models import User
 from accounts.permissions import AUTHENTICATED, PUBLIC, RoleViewSet
+from config.lists import ScopedListMixin
 from service.events import broadcast
 from service.models import Order, OrderItem, Reservation, Review, Seance
 
@@ -52,7 +53,7 @@ class DishViewSet(RoleViewSet):
         return qs.orderable() if self.request.query_params.get('orderable') else qs
 
 
-class DailySpecialViewSet(RoleViewSet):
+class DailySpecialViewSet(ScopedListMixin, RoleViewSet):
     """Plat du jour: the Chef creates one per date (today or later) and withdraws it when sold out.
 
     Each entry also reports how many were sold and its average rating (subqueries, so the two never multiply).
@@ -71,6 +72,11 @@ class DailySpecialViewSet(RoleViewSet):
             rating=Subquery(reviews.annotate(a=Avg('rating')).values('a')),
             rating_count=Coalesce(Subquery(reviews.annotate(c=Count('id')).values('c'), output_field=IntegerField()), 0),
         )
+
+    history_ordering = ('-date',)
+
+    def active_filter(self):  # today and the planned ones
+        return Q(date__gte=timezone.localdate())
 
     def perform_destroy(self, instance):
         try:
@@ -105,12 +111,15 @@ class IngredientViewSet(RoleViewSet):
             broadcast('manager', 'rupture_started' if ingredient.is_out_of_stock else 'rupture_ended', serializer.data)
 
 
-class StockRequestViewSet(RoleViewSet):
+class StockRequestViewSet(ScopedListMixin, RoleViewSet):
     queryset = StockRequest.objects.select_related('ingredient', 'supplier')
     serializer_class = StockRequestSerializer
     http_method_names = ['get', 'post']
     read_roles = (R.STOCK_MANAGER,)
     action_roles = {'create': (R.STOCK_MANAGER,)}
+
+    def active_filter(self):  # waiting for the manager or for the supplier
+        return Q(status__in=[StockRequest.Status.PENDING, StockRequest.Status.APPROVED])
 
     def perform_create(self, serializer):
         serializer.save(requested_by=self.request.user)

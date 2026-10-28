@@ -1,9 +1,10 @@
 import { motion } from 'motion/react'
 import { useCallback, useEffect, useState } from 'react'
 
-import { useApi, type Order, type Reservation, type User } from '../../api'
+import { useApi, usePagedApi, type Order, type Reservation, type User } from '../../api'
 import { rise } from '../../motion'
 import { useLiveRefresh, type Notifications } from '../../realtime'
+import LoadMore from '../../ui/LoadMore'
 import Loading from '../../ui/Loading'
 import Tabs from '../../ui/Tabs'
 import Toast from '../../ui/Toast'
@@ -38,26 +39,29 @@ function useNow(every = 60_000) {
 export default function DeskSpace({ user }: { user: User }) {
   const [tab, select] = useTab(TAB_IDS)
   const now = useNow()
-  const reservations = useApi<Reservation[]>('reservations')
-  const orders = useApi<Order[]>('orders', { is_delivery: true })
+  const reservations = useApi<Reservation[]>('reservations', { scope: 'active' })
+  const history = usePagedApi<Reservation>('reservations', { scope: 'history' })
+  const orders = useApi<Order[]>('orders', { is_delivery: true, scope: 'active' })
   const drivers = useApi<User[]>('users', { role: 'DELIVERER' })
 
   const { reload: reloadReservations } = reservations
+  const { reload: reloadHistory } = history
   const { reload: reloadOrders } = orders
   const { reload: reloadDrivers } = drivers
-  const refresh = useCallback(() => { reloadReservations(); reloadOrders(); reloadDrivers() },
-    [reloadReservations, reloadOrders, reloadDrivers])
+  const refresh = useCallback(() => { reloadReservations(); reloadHistory(); reloadOrders(); reloadDrivers() },
+    [reloadReservations, reloadHistory, reloadOrders, reloadDrivers])
   const { toast } = useLiveRefresh(refresh, NOTIFICATIONS)
 
   const all = reservations.data ?? []
   const today = new Date(now)
   const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime()
-  const lists: Record<Exclude<(typeof TAB_IDS)[number], 'livraisons'>, Reservation[]> = {
-    aujourdhui: all.filter((r) => sameDay(r.reservation_time, today) && ['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(r.status)),
+  const lists: Record<Exclude<(typeof TAB_IDS)[number], 'livraisons'>, Reservation[]> = {  // all = the active ones
+    aujourdhui: all.filter((r) => sameDay(r.reservation_time, today)),
     'a-valider': all.filter((r) => r.status === 'PENDING'),
     'a-venir': all.filter((r) => r.status === 'CONFIRMED' && new Date(r.reservation_time).getTime() >= endOfToday),
-    historique: all.filter((r) => ['DONE', 'CANCELLED', 'NO_SHOW'].includes(r.status)).reverse().slice(0, 50),
+    historique: history.items ?? [],
   }
+  const listed = tab === 'historique' ? history.items : reservations.data
   const toDeliver = (orders.data ?? []).filter((o) => o.status === 'PENDING').length
   const tabs = [
     { id: 'aujourdhui' as const, label: 'Aujourd’hui', count: lists.aujourdhui.filter((r) => r.status !== 'CHECKED_IN').length },
@@ -79,13 +83,16 @@ export default function DeskSpace({ user }: { user: User }) {
           ? (orders.data && drivers.data
             ? <Deliveries orders={orders.data} drivers={drivers.data} onChange={refresh} />
             : <Loading failed={orders.failed || drivers.failed} />)
-          : (reservations.data
+          : (listed
             ? (lists[tab].length === 0
               ? <p className="empty">Rien pour l’instant.</p>
-              : <ul className="card-list">
-                  {lists[tab].map((r) => <ReservationCard key={r.id} reservation={r} now={now} onChange={refresh} />)}
-                </ul>)
-            : <Loading failed={reservations.failed} />)}
+              : <>
+                  <ul className="card-list">
+                    {lists[tab].map((r) => <ReservationCard key={r.id} reservation={r} now={now} onChange={refresh} />)}
+                  </ul>
+                  {tab === 'historique' && <LoadMore hasMore={history.hasMore} onClick={history.loadMore} />}
+                </>)
+            : <Loading failed={tab === 'historique' ? history.failed : reservations.failed} />)}
       </Tabs>
 
       <Toast toast={toast} />

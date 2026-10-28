@@ -108,3 +108,4 @@ class StockRequest(models.Model):
     class Meta:
         ordering = ['-created_at']
         constraints = [models.CheckConstraint(condition=Q(quantity_requested__gt=0), name='stock_request_qty_positive')]
+        indexes = [models.Index(fields=['status'], name='stock_request_status')]

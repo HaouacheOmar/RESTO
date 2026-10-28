@@ -37,6 +37,7 @@ class Reservation(models.Model):
     class Meta:
         ordering = ['reservation_time']
         constraints = [models.CheckConstraint(condition=Q(guest_count__gt=0), name='reservation_guests_positive')]
+        indexes = [models.Index(fields=['status', 'reservation_time'], name='reservation_status_time')]
 
     @classmethod
     def overlapping(cls, when):
@@ -82,6 +83,7 @@ class Seance(models.Model):
         ordering = ['-opened_at']
         constraints = [models.UniqueConstraint(fields=['table'], condition=Q(status='OPEN'),
                                                name='one_open_seance_per_table')]
+        indexes = [models.Index(fields=['status', '-opened_at'], name='seance_status_opened')]
 
     @property
     def client(self):
@@ -104,6 +106,7 @@ class Addition(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [models.Index(fields=['-created_at'], name='addition_created')]  # day filter, dashboard
 
 
 class Order(models.Model):
@@ -133,6 +136,8 @@ class Order(models.Model):
         ordering = ['-created_at']
         constraints = [models.CheckConstraint(condition=Q(is_delivery=True) | Q(seance__isnull=False),
                                               name='dine_in_order_has_seance')]
+        indexes = [models.Index(fields=['status', '-created_at'], name='order_status_created'),
+                   models.Index(fields=['is_delivery', 'status'], name='order_delivery_status')]
 
 
 class OrderItem(models.Model):

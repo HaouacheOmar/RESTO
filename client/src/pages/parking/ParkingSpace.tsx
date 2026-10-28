@@ -115,7 +115,7 @@ function Secured({ reservations }: { reservations: Reservation[] }) {
 
 export default function ParkingSpace({ user }: { user: User }) {
   const [tab, select] = useTab(TAB_IDS)
-  const reservations = useApi<Reservation[]>('reservations')
+  const reservations = useApi<Reservation[]>('reservations', { scope: 'active' })
   const { reload } = reservations
   const refresh = useCallback(() => { reload() }, [reload])
   const { toast } = useLiveRefresh(refresh, NOTIFICATIONS)

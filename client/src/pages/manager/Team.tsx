@@ -57,9 +57,9 @@ function NewStaff({ onCreated }: { onCreated: () => void }) {
 }
 
 function Applications({ onChange }: { onChange: () => void }) {
-  const applications = useApi<JobApplication[]>('jobApplications')
+  const applications = useApi<JobApplication[]>('jobApplications', { scope: 'active' })
   const [error, setError] = useState('')
-  const pending = (applications.data ?? []).filter((a) => a.status === 'PENDING')
+  const pending = applications.data ?? []
 
   async function decide(id: number, accept: boolean) {
     setError('')
@@ -94,10 +94,10 @@ function Applications({ onChange }: { onChange: () => void }) {
 }
 
 export default function Team() {
-  const users = useApi<User[]>('users')
+  const users = useApi<User[]>('users', { staff: 1 })  // clients are never listed here
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
-  const staff = (users.data ?? []).filter((u) => u.role !== 'CLIENT')
+  const staff = users.data ?? []
 
   async function setActive(user: User, is_active: boolean) {
     setError('')

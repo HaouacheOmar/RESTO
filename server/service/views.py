@@ -1,5 +1,7 @@
 from django.db import transaction
-from django.db.models import Avg, Count, Sum
+from datetime import timedelta
+
+from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -13,6 +15,7 @@ from rest_framework.views import APIView
 from accounts.models import User
 from accounts.permissions import AUTHENTICATED, HasRole, ReadOnlyRoleViewSet, RoleViewSet
 from catalog.models import Ingredient, RestaurantTable, StockRequest
+from config.lists import ScopedListMixin
 
 from .events import broadcast
 from .models import Addition, Order, OrderItem, Reservation, Review, Seance
@@ -40,7 +43,7 @@ def _method(request):
     return method
 
 
-class ReservationViewSet(RoleViewSet):
+class ReservationViewSet(ScopedListMixin, RoleViewSet):
     """Client books → parking attendant secures or refuses a spot → reservation manager confirms → check-in."""
     serializer_class = ReservationSerializer
     http_method_names = ['get', 'post']
@@ -69,6 +72,11 @@ class ReservationViewSet(RoleViewSet):
         if status := self.request.query_params.get('status'):
             qs = qs.filter(status=status)
         return qs
+
+    history_ordering = ('-reservation_time',)
+
+    def active_filter(self):
+        return Q(status__in=[RS.PENDING, RS.CONFIRMED, RS.CHECKED_IN])
 
     def perform_create(self, serializer):
         reservation = serializer.save(client=self.request.user)
@@ -202,7 +210,7 @@ class ReservationViewSet(RoleViewSet):
         return self._set(reservation, 'reservation_cancelled', status=RS.CANCELLED)
 
 
-class SeanceViewSet(ReadOnlyRoleViewSet):
+class SeanceViewSet(ScopedListMixin, ReadOnlyRoleViewSet):
     """Séances open via check-in or a server's first order on a free table; they end by `pay` or `close`."""
     serializer_class = SeanceSerializer
     read_roles = (R.CASHIER, R.SERVER, R.RESERVATION_MANAGER)
@@ -213,6 +221,9 @@ class SeanceViewSet(ReadOnlyRoleViewSet):
         if status := self.request.query_params.get('status'):
             qs = qs.filter(status=status)
         return qs
+
+    def active_filter(self):  # the tables occupied right now
+        return Q(status=Seance.Status.OPEN)
 
     def _end(self, seance, status):
         seance.status, seance.closed_at = status, timezone.now()
@@ -253,7 +264,7 @@ class SeanceViewSet(ReadOnlyRoleViewSet):
 
 @extend_schema_view(list=extend_schema(parameters=[
     OpenApiParameter('date', OpenApiTypes.DATE, description='Only the Additions paid that day (restaurant local time).')]))
-class AdditionViewSet(ReadOnlyRoleViewSet):
+class AdditionViewSet(ScopedListMixin, ReadOnlyRoleViewSet):
     serializer_class = AdditionSerializer
     read_roles = (R.CASHIER, R.CLIENT)
     action_roles = {'ticket': (R.CASHIER, R.SERVER)}
@@ -267,6 +278,11 @@ class AdditionViewSet(ReadOnlyRoleViewSet):
         if day := self.request.query_params.get('date'):  # YYYY-MM-DD, restaurant local time
             qs = qs.filter(created_at__date=day)
         return qs
+
+    bounded_params = ('date',)
+
+    def active_filter(self):  # still open to reviews (a Review is allowed for 7 days)
+        return Q(created_at__gte=timezone.now() - timedelta(days=7))
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True)
@@ -287,7 +303,7 @@ class AdditionViewSet(ReadOnlyRoleViewSet):
         })
 
 
-class OrderViewSet(RoleViewSet):
+class OrderViewSet(ScopedListMixin, RoleViewSet):
     """Commandes: dine-in (server, inside a Séance) and Livraison (client → reservation manager → deliverer)."""
     serializer_class = OrderSerializer
     http_method_names = ['get', 'post']
@@ -315,6 +331,11 @@ class OrderViewSet(RoleViewSet):
         if (delivery := self.request.query_params.get('is_delivery')) is not None:
             qs = qs.filter(is_delivery=delivery in ('1', 'true', 'True'))
         return qs
+
+    history_ordering = ('-created_at',)
+
+    def active_filter(self):
+        return Q(status__in=[Order.Status.PENDING, Order.Status.DELIVERING])
 
     def perform_create(self, serializer):
         order = serializer.save()
@@ -400,7 +421,7 @@ class OrderViewSet(RoleViewSet):
         return Response(data)
 
 
-class ReviewViewSet(RoleViewSet):
+class ReviewViewSet(ScopedListMixin, RoleViewSet):
     """Avis on one of the client's paid Additions; the manager sees everything."""
     serializer_class = ReviewSerializer
     http_method_names = ['get', 'post']
@@ -410,6 +431,9 @@ class ReviewViewSet(RoleViewSet):
     def get_queryset(self):
         user = self.request.user
         return Review.objects.filter(client=user) if self.role == R.CLIENT else Review.objects.all()
+
+    def active_filter(self):  # a review has no "current" state: every list is paginated
+        return Q(pk__in=[])
 
     def perform_create(self, serializer):
         serializer.save(client=self.request.user)

@@ -1,9 +1,10 @@
 import { motion } from 'motion/react'
 import { useCallback } from 'react'
 
-import { useApi, type Addition, type Order, type Reservation, type User } from '../../api'
+import { useApi, usePagedApi, type Addition, type Order, type Reservation, type User } from '../../api'
 import { rise } from '../../motion'
 import { useLiveRefresh, type Notifications } from '../../realtime'
+import LoadMore from '../../ui/LoadMore'
 import Loading from '../../ui/Loading'
 import Tabs from '../../ui/Tabs'
 import Toast from '../../ui/Toast'
@@ -31,15 +32,19 @@ const NOTIFICATIONS: Notifications = {
 
 export default function ClientSpace({ user }: { user: User }) {
   const [tab, select] = useTab(TAB_IDS)
-  const reservations = useApi<Reservation[]>('reservations')
-  const orders = useApi<Order[]>('orders')
-  const additions = useApi<Addition[]>('additions')
+  const upcoming = useApi<Reservation[]>('reservations', { scope: 'active' })  // soonest first
+  const past = usePagedApi<Reservation>('reservations', { scope: 'history' })  // newest first
+  const orders = usePagedApi<Order>('orders')
+  const additions = usePagedApi<Addition>('additions')
 
-  const { reload: reloadReservations } = reservations
+  const { reload: reloadUpcoming } = upcoming
+  const { reload: reloadPast } = past
   const { reload: reloadOrders } = orders
   const { reload: reloadAdditions } = additions
+  const reloadReservations = useCallback(() => { reloadUpcoming(); reloadPast() }, [reloadUpcoming, reloadPast])
   const refresh = useCallback(() => { reloadReservations(); reloadOrders(); reloadAdditions() },
     [reloadReservations, reloadOrders, reloadAdditions])
+  const reservations = upcoming.data && past.items ? [...upcoming.data, ...past.items] : null
   const { toast } = useLiveRefresh(refresh, NOTIFICATIONS)
 
   return (
@@ -50,16 +55,19 @@ export default function ClientSpace({ user }: { user: User }) {
       </motion.header>
 
       <Tabs tabs={TAB_IDS.map((id, i) => ({ id, label: LABELS[i] }))} current={tab} onSelect={select} label="Mon espace">
-        {tab === 'reserver' && <BookingForm onBooked={() => reservations.reload()} />}
+        {tab === 'reserver' && <BookingForm onBooked={reloadReservations} />}
         {tab === 'commander' && <DeliveryOrder onOrdered={async () => { await orders.reload(); select('commandes') }} />}
-        {tab === 'reservations' && (reservations.data
-          ? <ReservationList reservations={reservations.data} onChange={reservations.reload} />
-          : <Loading failed={reservations.failed} />)}
-        {tab === 'commandes' && (orders.data
-          ? <OrderList orders={orders.data} onChange={orders.reload} />
+        {tab === 'reservations' && (reservations
+          ? <><ReservationList reservations={reservations} onChange={reloadReservations} />
+              <LoadMore hasMore={past.hasMore} onClick={past.loadMore} /></>
+          : <Loading failed={upcoming.failed || past.failed} />)}
+        {tab === 'commandes' && (orders.items
+          ? <><OrderList orders={orders.items} onChange={orders.reload} />
+              <LoadMore hasMore={orders.hasMore} onClick={orders.loadMore} /></>
           : <Loading failed={orders.failed} />)}
-        {tab === 'avis' && (additions.data
-          ? <AdditionReviews additions={additions.data} onChange={additions.reload} />
+        {tab === 'avis' && (additions.items
+          ? <><AdditionReviews additions={additions.items} onChange={additions.reload} />
+              <LoadMore hasMore={additions.hasMore} onClick={additions.loadMore} /></>
           : <Loading failed={additions.failed} />)}
       </Tabs>
 

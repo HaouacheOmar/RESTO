@@ -63,6 +63,18 @@ class RestoTestCase(APITestCase):
 
 
 class ReservationTests(RestoTestCase):
+    def test_growing_lists_split_into_current_and_paginated_history(self):
+        ids = [self.reserve(when=TOMORROW + timedelta(hours=3 * i)).json()['id'] for i in range(3)]
+        self.post(R.CLIENT, f'/api/reservations/{ids[0]}/cancel/')
+        desk = self.as_(R.RESERVATION_MANAGER)
+
+        active = desk.get('/api/reservations/', {'scope': 'active'}).json()
+        self.assertEqual(sorted(r['id'] for r in active), ids[1:])  # a plain list, not paginated
+        history = desk.get('/api/reservations/', {'scope': 'history'}).json()
+        self.assertEqual((history['count'], [r['id'] for r in history['results']]), (1, ids[:1]))
+        page = desk.get('/api/reservations/', {'limit': 2}).json()  # no scope: everything, in pages
+        self.assertEqual((page['count'], len(page['results']), bool(page['next'])), (3, 2, True))
+
     def test_table_proposal_respects_capacity_zone_and_overlap(self):
         self.assertEqual(Reservation.free_tables('STANDARD', 3, TOMORROW).first(), self.t4)  # best fit
         self.assertEqual(Reservation.free_tables('VIP', 3, TOMORROW).first(), self.vip)
@@ -285,7 +297,7 @@ class MenuAndStockTests(RestoTestCase):
         self.as_(R.CHEF).patch(f'/api/daily-specials/{chorba["id"]}/', {'is_available': False})  # sold out
         self.assertIsNone(self.as_(None).get('/api/menu/').json()['plat_du_jour'])
 
-        listed = {d['name']: d for d in self.as_(R.CHEF).get('/api/daily-specials/').json()}
+        listed = {d['name']: d for d in self.as_(R.CHEF).get('/api/daily-specials/', {'scope': 'active'}).json()}
         self.assertEqual((listed['Chorba']['sold'], listed['Chorba']['rating_count']), (0, 0))  # ordered, not paid yet
         self.assertEqual(self.as_(R.CHEF).delete(f'/api/daily-specials/{chorba["id"]}/').status_code, 400)  # ordered
         self.assertEqual(self.as_(R.CHEF).post('/api/daily-specials/', {**special, 'date': (today - timedelta(days=2)).isoformat()})

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
-import { api, errorText, formatDate, useApi, type StockRequest, type Supplier } from '../../api'
+import { api, errorText, formatDate, useApi, usePagedApi, type StockRequest, type Supplier } from '../../api'
+import LoadMore from '../../ui/LoadMore'
 import Loading from '../../ui/Loading'
 
 const STATUS: Record<StockRequest['status'], string> = { PENDING: 'À approuver', APPROVED: 'Commandée', FULFILLED: 'Reçue' }
@@ -50,13 +51,16 @@ function RequestCard({ request: r, suppliers, onChange }: { request: StockReques
 }
 
 export default function Restock({ onChange }: { onChange: () => void }) {
-  const requests = useApi<StockRequest[]>('stockRequests')
+  const requests = useApi<StockRequest[]>('stockRequests', { scope: 'active' })
+  const received = usePagedApi<StockRequest>('stockRequests', { scope: 'history' }, 10)
   const suppliers = useApi<Supplier[]>('suppliers')
-  if (!requests.data || !suppliers.data) return <Loading failed={requests.failed || suppliers.failed} />
+  if (!requests.data || !received.items || !suppliers.data) {
+    return <Loading failed={requests.failed || received.failed || suppliers.failed} />
+  }
   const ingredientSuppliers = suppliers.data.filter((s) => s.category === 'INGREDIENTS')
-  const reload = () => { requests.reload(); onChange() }
-  const open = requests.data.filter((r) => r.status !== 'FULFILLED')
-  const done = requests.data.filter((r) => r.status === 'FULFILLED').slice(0, 10)
+  const reload = () => { requests.reload(); received.reload(); onChange() }
+  const open = requests.data
+  const done = received.items
   return (
     <section aria-labelledby="restock-title">
       <h2 id="restock-title" className="desk-section-title">Demandes de réapprovisionnement</h2>
@@ -67,6 +71,7 @@ export default function Restock({ onChange }: { onChange: () => void }) {
         <>
           <h2 className="desk-section-title restock-done">Reçues récemment</h2>
           <ul className="card-list">{done.map((r) => <RequestCard key={r.id} request={r} suppliers={suppliers.data!} onChange={reload} />)}</ul>
+          <LoadMore hasMore={received.hasMore} onClick={received.loadMore} />
         </>
       )}
     </section>

@@ -2,9 +2,10 @@ import { motion } from 'motion/react'
 import { Banknote, CreditCard, MapPin, Navigation, Phone } from 'lucide-react'
 import { useCallback, useState } from 'react'
 
-import { api, formatDateTime, formatPrice, toErrors, useApi, type Order, type User } from '../../api'
+import { api, formatDateTime, formatPrice, toErrors, useApi, usePagedApi, type Order, type User } from '../../api'
 import { rise } from '../../motion'
 import { useLiveRefresh, type Notifications } from '../../realtime'
+import LoadMore from '../../ui/LoadMore'
 import Loading from '../../ui/Loading'
 import Toast from '../../ui/Toast'
 import './driver.css'
@@ -139,14 +140,17 @@ function CurrentDelivery({ order, onChange }: { order: Order; onChange: () => vo
 
 export default function DriverSpace({ user }: { user: User }) {
   const me = useApi<User>('me')
-  const orders = useApi<Order[]>('orders')  // a deliverer only ever sees their own deliveries
+  // a deliverer only ever sees their own deliveries
+  const orders = useApi<Order[]>('orders', { scope: 'active' })
+  const history = usePagedApi<Order>('orders', { scope: 'history' })
   const { reload: reloadMe } = me
   const { reload: reloadOrders } = orders
-  const refresh = useCallback(() => { reloadMe(); reloadOrders() }, [reloadMe, reloadOrders])
+  const { reload: reloadHistory } = history
+  const refresh = useCallback(() => { reloadMe(); reloadOrders(); reloadHistory() }, [reloadMe, reloadOrders, reloadHistory])
   const { toast } = useLiveRefresh(refresh, NOTIFICATIONS)
 
   const current = (orders.data ?? []).filter((o) => o.status === 'DELIVERING')
-  const done = (orders.data ?? []).filter((o) => o.status === 'DELIVERED' || o.status === 'FAILED').slice(0, 20)
+  const done = history.items ?? []
 
   return (
     <main className="desk driver">
@@ -179,6 +183,7 @@ export default function DriverSpace({ user }: { user: User }) {
                   </li>
                 ))}
               </ul>
+              <LoadMore hasMore={history.hasMore} onClick={history.loadMore} />
             </section>
           )}
         </>

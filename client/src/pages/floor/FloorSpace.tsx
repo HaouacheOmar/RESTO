@@ -37,7 +37,7 @@ function TableTile({ table, seance, selected, onSelect }: {
 export default function FloorSpace({ user }: { user: User }) {
   const [params, setParams] = useSearchParams()
   const tables = useApi<Table[]>('tables')
-  const seances = useApi<Seance[]>('seances', { status: 'OPEN' })
+  const seances = useApi<Seance[]>('seances', { scope: 'active' })
 
   const { reload: reloadTables } = tables
   const { reload: reloadSeances } = seances

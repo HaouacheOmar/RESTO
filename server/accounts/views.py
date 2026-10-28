@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import generics, permissions, serializers
 from rest_framework.decorators import action
@@ -14,6 +15,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from service.events import broadcast
+
+from config.lists import ScopedListMixin
 
 from .models import JobApplication, User
 from .permissions import PUBLIC, RoleViewSet
@@ -118,23 +121,33 @@ class AvailabilityView(APIView):
         return Response(data)
 
 
-class UserViewSet(RoleViewSet):
+class UserViewSet(ScopedListMixin, RoleViewSet):
+    """`?staff=1`: the team only (clients excluded). With `role` or `staff` the list is short and not paginated."""
     serializer_class = UserSerializer
     read_roles = (User.Role.RESERVATION_MANAGER,)
+    bounded_params = ('role', 'staff')
 
     def get_queryset(self):
         qs = User.objects.order_by('username')
         for field in ('role', 'availability'):
             if value := self.request.query_params.get(field):
                 qs = qs.filter(**{field: value})
+        if self.request.query_params.get('staff'):
+            qs = qs.exclude(role=User.Role.CLIENT)
         return qs
 
+    def active_filter(self):
+        return Q(is_active=True)
 
-class JobApplicationViewSet(RoleViewSet):
+
+class JobApplicationViewSet(ScopedListMixin, RoleViewSet):
     queryset = JobApplication.objects.order_by('-created_at')
     serializer_class = JobApplicationSerializer
     http_method_names = ['get', 'post', 'delete']
     action_roles = {'create': PUBLIC}
+
+    def active_filter(self):
+        return Q(status=JobApplication.Status.PENDING)
 
     @property
     def throttle_scope(self):  # only the public form is limited, not the manager's reviewing

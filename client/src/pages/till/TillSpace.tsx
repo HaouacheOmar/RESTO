@@ -113,7 +113,7 @@ export default function TillSpace({ user }: { user: User }) {
   const [tab, select] = useTab(TAB_IDS)
   const [receipt, setReceipt] = useState<number | null>(null)
   const [today] = useState(() => localDay(new Date()))
-  const seances = useApi<Seance[]>('seances', { status: 'OPEN' })
+  const seances = useApi<Seance[]>('seances', { scope: 'active' })
   const additions = useApi<Addition[]>('additions', { date: today })
 
   const { reload: reloadSeances } = seances
