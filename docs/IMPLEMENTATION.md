@@ -163,7 +163,7 @@ Les tests de `service/tests.py` sont regroupés par domaine : réservations, Sé
 
 ### Image de production
 
-`server/Dockerfile` construit une image qui applique les migrations, crée le restaurant de démo (`seed_demo`) puis lance Daphne sur `$PORT` (8000 par défaut). Les fichiers statiques (admin) sont servis par WhiteNoise. Avec `DEBUG=0`, `SECRET_KEY` est obligatoire, les cookies sont sécurisés et le HTTPS est détecté derrière le proxy de l'hébergeur (`X-Forwarded-Proto`). Variables : voir `server/.env.example`.
+`server/Dockerfile` construit une image qui applique les migrations, crée le restaurant de démo (`seed_demo`) puis lance Daphne sur `$PORT` (8000 par défaut). Les fichiers statiques (admin) sont servis par WhiteNoise. Avec `DEBUG=0`, `SECRET_KEY` est obligatoire, les cookies sont sécurisés, le HTTPS est détecté derrière le proxy de l'hébergeur (`X-Forwarded-Proto`), HTTP est redirigé vers HTTPS (sauf `/healthz/`) et HSTS est envoyé (1 an). Variables : voir `server/.env.example`.
 
 ### Démo en ligne
 
@@ -172,6 +172,13 @@ Les tests de `service/tests.py` sont regroupés par domaine : réservations, Sé
 - **Base de données** : PostgreSQL Supabase via le pooler de session (IPv4), `POSTGRES_SSLMODE=require`. L'API de données Supabase est désactivée : seules les requêtes de Django atteignent les tables.
 - **Photos** : Supabase Storage par le protocole S3 (`django-storages`), bucket public `media` ; sans `S3_BUCKET`, les photos restent dans `media/`.
 - **Redis** : l'instance Key Value gratuite du compte Render, partagée avec un autre projet sur son propre index (`REDIS_DB=1`).
+
+### Sécurité et exploitation
+
+- **Limitation de débit** (DRF, compteurs dans Redis) : 120 requêtes/min par IP anonyme, 600/min par utilisateur, et par IP : connexion 10/min, rafraîchissement 30/min, inscription 20/h, candidature 10/h. Au-delà : `429`. `NUM_PROXIES=2` en production (Vercel puis Render) pour compter la vraie IP du client dans `X-Forwarded-For`.
+- **Santé** : `GET /healthz/` renvoie `{"database": "ok", "redis": "ok"}` ; `503` seulement si la base est injoignable (sans Redis l'API fonctionne, sans temps réel). C'est le contrôle de santé de Render.
+- **Erreurs** : Sentry, actif seulement si `SENTRY_DSN` (API) ou `VITE_SENTRY_DSN` (build du frontend) est défini ; aucune donnée personnelle envoyée. Sans DSN au build, le code Sentry n'est même pas inclus.
+- **En-têtes du frontend** (`client/vercel.json`) : Content-Security-Policy (scripts du site seulement ; images Unsplash et Supabase ; polices Google ; WebSocket vers l'API ; Sentry), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
 
 ## 9. Évolutions prévues
 Flux cuisine pour le Chef, Addition partagée.

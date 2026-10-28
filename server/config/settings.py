@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -37,6 +38,20 @@ if not DEBUG:
         raise ImproperlyConfigured('Set SECRET_KEY when DEBUG=0.')
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # behind the host's HTTPS proxy
     SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r'^healthz/$']  # the host's health checks reach the container over plain HTTP
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365
+
+TESTING = sys.argv[1:2] == ['test']
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6380/0')
+REDIS_DB = int(os.environ.get('REDIS_DB', '0'))  # lets the app share one Redis with another project
+
+# Error tracking: on when SENTRY_DSN is set. No personal data is sent.
+if os.environ.get('SENTRY_DSN') and not TESTING:
+    import sentry_sdk
+    sentry_sdk.init(dsn=os.environ['SENTRY_DSN'], environment=os.environ.get('SENTRY_ENVIRONMENT', 'production'),
+                    traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+                    send_default_pii=False)
 
 
 # Application definition
@@ -174,6 +189,16 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': ['rest_framework.throttling.AnonRateThrottle',
+                                 'rest_framework.throttling.UserRateThrottle',
+                                 'rest_framework.throttling.ScopedRateThrottle'],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '120/min', 'user': '600/min',
+        # Public endpoints an attacker would hammer (ScopedRateThrottle, per client IP)
+        'login': '10/min', 'refresh': '30/min', 'register': '20/hour', 'job_application': '10/hour',
+    },
+    # Proxies in front of Django (Vercel + Render = 2): the client IP is counted from the right of X-Forwarded-For
+    'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '0')) or None,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -187,11 +212,14 @@ SPECTACULAR_SETTINGS = {
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        # REDIS_DB lets the app share one Redis with another project (a db index the URL doesn't set)
-        'CONFIG': {'hosts': [{'address': os.environ.get('REDIS_URL', 'redis://localhost:6380/0'),
-                              'db': int(os.environ.get('REDIS_DB', '0'))}]},
+        'CONFIG': {'hosts': [{'address': REDIS_URL, 'db': REDIS_DB}]},
     }
 }
+
+# Shared by every instance (rate limits). Tests get a fresh in-memory cache so limits never leak between runs.
+CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'} if TESTING else {
+    'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': REDIS_URL,
+    'OPTIONS': {'db': REDIS_DB}, 'KEY_PREFIX': 'resto'}}
 
 # Note: fixed 2h slot per reservation; add a per-reservation duration if needed
 RESERVATION_SLOT = timedelta(hours=2)

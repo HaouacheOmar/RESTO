@@ -11,3 +11,4 @@ Pillow>=12
 drf-spectacular>=0.30
 whitenoise>=6.12
 django-storages[s3]>=1.14
+sentry-sdk[django]>=2.40

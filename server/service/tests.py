@@ -4,6 +4,8 @@ from decimal import Decimal
 
 from asgiref.sync import async_to_sync, sync_to_async
 from channels.testing import WebsocketCommunicator
+from django.core.cache import cache
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase, APITransactionTestCase
 
@@ -394,6 +396,28 @@ class AuthCookieTests(APITestCase):
         response = self.client.post('/api/auth/token/', {'username': 'nobody', 'password': 'x'})
         self.assertEqual(response.status_code, 401)
         self.assertNotIn('resto_refresh', response.cookies)
+
+
+class HardeningTests(APITestCase):
+    def setUp(self):
+        cache.clear()  # rate-limit counters live in the cache
+        self.addCleanup(cache.clear)
+
+    def test_login_is_rate_limited_per_client(self):
+        codes = [self.client.post('/api/auth/token/', {'username': 'x', 'password': 'y'}).status_code
+                 for _ in range(11)]
+        self.assertEqual(codes[:10], [401] * 10)
+        self.assertEqual(codes[10], 429)
+
+    def test_healthz_reports_database_and_redis(self):
+        response = self.client.get('/healthz/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['database'], 'ok')
+
+    @override_settings(SECURE_SSL_REDIRECT=True, SECURE_REDIRECT_EXEMPT=[r'^healthz/$'])
+    def test_https_redirect_spares_only_the_health_check(self):
+        self.assertEqual(self.client.get('/api/menu/').status_code, 301)
+        self.assertEqual(self.client.get('/healthz/').status_code, 200)
 
 
 class SeedDemoTests(APITestCase):

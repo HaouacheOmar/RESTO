@@ -7,11 +7,13 @@ services:
     rootDir: server
     plan: free
     region: frankfurt
-    healthCheckPath: /api/menu/
+    healthCheckPath: /healthz/
     envVars:
       - { key: DEBUG, value: "0" }
       - { key: SECRET_KEY, generateValue: true }
       - { key: TIME_ZONE, value: Africa/Algiers }
+      - { key: NUM_PROXIES, value: "2" }             # Vercel + Render in front of Django (rate limits per client IP)
+      - { key: SENTRY_DSN, sync: false }            # optional: error tracking
       - { key: ALLOWED_HOSTS, sync: false }         # resto-api-xvuz.onrender.com,resto-ruby-nine.vercel.app (WebSocket Origin is the Vercel domain)
       - { key: CSRF_TRUSTED_ORIGINS, sync: false }  # https://<app>.vercel.app,https://resto-api-xvuz.onrender.com
       - key: REDIS_URL

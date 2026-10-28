@@ -35,6 +35,7 @@ def _set_refresh_cookie(response, refresh):
 
 class LoginView(TokenObtainPairView):
     """Returns the access token in the body and sets the refresh token as an httpOnly cookie."""
+    throttle_scope = 'login'
 
     @extend_schema(responses=AccessOnly)
     def post(self, request, *args, **kwargs):
@@ -48,6 +49,7 @@ class RefreshView(APIView):
     # JWT only: gives errors a WWW-Authenticate header (so a real 401, not 403) and no session/CSRF coupling.
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'refresh'
 
     @extend_schema(request=None, responses=AccessOnly)
     def post(self, request):
@@ -83,6 +85,7 @@ class LogoutView(APIView):
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'register'
 
 
 class MeView(generics.RetrieveAPIView):
@@ -132,6 +135,10 @@ class JobApplicationViewSet(RoleViewSet):
     serializer_class = JobApplicationSerializer
     http_method_names = ['get', 'post', 'delete']
     action_roles = {'create': PUBLIC}
+
+    @property
+    def throttle_scope(self):  # only the public form is limited, not the manager's reviewing
+        return 'job_application' if self.action == 'create' else None
 
     def _pending(self):
         application = self.get_object()

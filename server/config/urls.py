@@ -9,6 +9,8 @@ from accounts import views as accounts
 from catalog import views as catalog
 from service import views as service
 
+from .health import healthz
+
 router = DefaultRouter()
 router.register('users', accounts.UserViewSet, basename='user')
 router.register('job-applications', accounts.JobApplicationViewSet)
@@ -25,6 +27,7 @@ router.register('additions', service.AdditionViewSet, basename='addition')
 router.register('reviews', service.ReviewViewSet, basename='review')
 
 urlpatterns = [
+    path('healthz/', healthz),
     path('admin/', admin.site.urls),
     path('api/auth/token/', accounts.LoginView.as_view()),
     path('api/auth/token/refresh/', accounts.RefreshView.as_view()),
