@@ -1,9 +1,13 @@
 import asyncio
+import re
 from datetime import timedelta
 from decimal import Decimal
 
 from asgiref.sync import async_to_sync, sync_to_async
 from channels.testing import WebsocketCommunicator
+from urllib.parse import parse_qs, urlparse
+
+from django.core import mail
 from django.core.cache import cache
 from django.test import override_settings
 from django.utils import timezone
@@ -430,6 +434,41 @@ class HardeningTests(APITestCase):
     def test_https_redirect_spares_only_the_health_check(self):
         self.assertEqual(self.client.get('/api/menu/').status_code, 301)
         self.assertEqual(self.client.get('/healthz/').status_code, 200)
+
+
+class PasswordResetTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.user = User.objects.create_user(username='amel', email='amel@example.com', password='Old-pass-2026!',
+                                             role=R.CLIENT, first_name='Amel')
+
+    def link(self):
+        query = parse_qs(urlparse(re.search(r"https?://\S+", mail.outbox[-1].body).group()).query)
+        return query['uid'][0], query['token'][0]
+
+    def test_unknown_email_looks_the_same_and_sends_nothing(self):
+        self.assertEqual(self.client.post('/api/auth/password/reset/', {'email': 'nobody@example.com'}).status_code, 204)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_link_sets_the_password_once_and_signs_out_old_sessions(self):
+        login = self.client.post('/api/auth/token/', {'username': 'amel', 'password': 'Old-pass-2026!'})
+        old_refresh = login.cookies['resto_refresh'].value
+
+        self.assertEqual(self.client.post('/api/auth/password/reset/', {'email': 'AMEL@example.com'}).status_code, 204)
+        self.assertEqual((len(mail.outbox), mail.outbox[0].to), (1, ['amel@example.com']))
+        uid, token = self.link()
+
+        url = '/api/auth/password/reset/confirm/'
+        weak = self.client.post(url, {'uid': uid, 'token': token, 'password': '123'})
+        self.assertIn('password', weak.json())
+        self.assertIn('token', self.client.post(url, {'uid': uid, 'token': token + 'x', 'password': 'New-pass-2026!'}).json())
+        self.assertEqual(self.client.post(url, {'uid': uid, 'token': token, 'password': 'New-pass-2026!'}).status_code, 204)
+        self.assertEqual(self.client.post(url, {'uid': uid, 'token': token, 'password': 'Other-pass-2026!'}).status_code, 400)
+
+        self.assertEqual(self.client.post('/api/auth/token/', {'username': 'amel', 'password': 'New-pass-2026!'}).status_code, 200)
+        self.client.cookies['resto_refresh'] = old_refresh
+        self.assertEqual(self.client.post('/api/auth/token/refresh/').status_code, 401)  # old session revoked
 
 
 class SeedDemoTests(APITestCase):

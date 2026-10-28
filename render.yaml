@@ -14,6 +14,10 @@ services:
       - { key: TIME_ZONE, value: Africa/Algiers }
       - { key: NUM_PROXIES, value: "2" }             # Vercel + Render in front of Django (rate limits per client IP)
       - { key: SENTRY_DSN, sync: false }            # optional: error tracking
+      - { key: FRONTEND_URL, value: https://resto-ruby-nine.vercel.app }  # links in emails
+      - { key: EMAIL_HOST, sync: false }            # optional: SMTP for password reset (else emails go to the logs)
+      - { key: EMAIL_HOST_USER, sync: false }
+      - { key: EMAIL_HOST_PASSWORD, sync: false }
       - { key: ALLOWED_HOSTS, sync: false }         # resto-api-xvuz.onrender.com,resto-ruby-nine.vercel.app (WebSocket Origin is the Vercel domain)
       - { key: CSRF_TRUSTED_ORIGINS, sync: false }  # https://<app>.vercel.app,https://resto-api-xvuz.onrender.com
       - key: REDIS_URL

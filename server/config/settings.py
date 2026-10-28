@@ -198,6 +198,7 @@ REST_FRAMEWORK = {
         'anon': '120/min', 'user': '600/min',
         # Public endpoints an attacker would hammer (ScopedRateThrottle, per client IP)
         'login': '10/min', 'refresh': '30/min', 'register': '20/hour', 'job_application': '10/hour',
+        'password_reset': '5/hour', 'password_reset_confirm': '20/hour',
     },
     # Proxies in front of Django (Vercel + Render = 2): the client IP is counted from the right of X-Forwarded-For
     'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '0')) or None,
@@ -230,8 +231,20 @@ RESERVATION_SLOT = timedelta(hours=2)
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+# SMTP when EMAIL_HOST is set (Brevo, Postmark, SES…); otherwise emails are printed to the console.
+MAILERS = {'default': {
+    'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+    'OPTIONS': {
+        'host': os.environ['EMAIL_HOST'],
+        'port': int(os.environ.get('EMAIL_PORT', '587')),
+        'username': os.environ.get('EMAIL_HOST_USER', ''),
+        'password': os.environ.get('EMAIL_HOST_PASSWORD', ''),
+        'use_tls': True,
+        'timeout': 10,
     },
-}
+} if os.environ.get('EMAIL_HOST') else {'BACKEND': 'django.core.mail.backends.console.EmailBackend'}}
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'RESTO <no-reply@resto.local>')
+
+# Password reset: the emailed link opens the frontend, and is valid for one hour.
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8088')
+PASSWORD_RESET_TIMEOUT = 60 * 60

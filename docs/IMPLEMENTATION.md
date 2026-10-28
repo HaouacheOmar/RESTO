@@ -57,6 +57,7 @@ Le système est distribué au sens où plusieurs postes indépendants partagent 
 | :--- | :--- | :--- |
 | `POST auth/register/` | public | Inscription client |
 | `POST auth/token/`, `auth/token/refresh/`, `auth/logout/` | public | Connexion (jeton d'accès dans la réponse, jeton de rafraîchissement en cookie `httpOnly`), rafraîchissement par le cookie, déconnexion (révocation) |
+| `POST auth/password/reset/` (`email`), `auth/password/reset/confirm/` (`uid`, `token`, `password`) | public | Mot de passe oublié : lien par e-mail valable 1 h vers `/mot-de-passe/nouveau` ; la demande répond toujours 204 (on ne révèle pas quels e-mails ont un compte) ; la confirmation vérifie le mot de passe, rend le lien inutilisable et révoque toutes les sessions du compte |
 | `GET auth/me/` | connecté | Profil |
 | `POST auth/me/availability/` | livreur | Début / fin de service (`AVAILABLE` ⇄ `OFFLINE`), refusé pendant une livraison ; annoncé au groupe `deliveries` |
 | `users/` (`?role=&availability=`, `?staff=1` : sans les clients) | gérant (lecture : + responsable) | Personnel, livreurs disponibles |
@@ -188,6 +189,7 @@ Les tests de `service/tests.py` sont regroupés par domaine : réservations, Sé
 
 - **Limitation de débit** (DRF, compteurs dans Redis) : 120 requêtes/min par IP anonyme, 600/min par utilisateur, et par IP : connexion 10/min, rafraîchissement 30/min, inscription 20/h, candidature 10/h. Au-delà : `429`. `NUM_PROXIES=2` en production (Vercel puis Render) pour compter la vraie IP du client dans `X-Forwarded-For`.
 - **Santé** : `GET /healthz/` renvoie `{"database": "ok", "redis": "ok"}` ; `503` seulement si la base est injoignable (sans Redis l'API fonctionne, sans temps réel). C'est le contrôle de santé de Render.
+- **E-mails** : SMTP si `EMAIL_HOST` est défini (`EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`), sinon affichés dans les journaux. `FRONTEND_URL` construit les liens. Les comptes de démo ont des adresses `@resto.demo` qui ne reçoivent rien : personne ne peut réinitialiser leur mot de passe.
 - **Erreurs** : Sentry, actif seulement si `SENTRY_DSN` (API) ou `VITE_SENTRY_DSN` (build du frontend) est défini ; aucune donnée personnelle envoyée. Sans DSN au build, le code Sentry n'est même pas inclus.
 - **En-têtes du frontend** (`client/vercel.json`) : Content-Security-Policy (scripts du site seulement ; images Unsplash et Supabase ; polices Google ; WebSocket vers l'API ; Sentry), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
 

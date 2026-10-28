@@ -11,6 +11,8 @@ const ENDPOINTS = {
   refresh: '/api/auth/token/refresh/',
   logout: '/api/auth/logout/',
   register: '/api/auth/register/',
+  passwordReset: '/api/auth/password/reset/',
+  passwordResetConfirm: '/api/auth/password/reset/confirm/',
   me: '/api/auth/me/',
   reservations: '/api/reservations/',
   reservationCancel: (id: number) => `/api/reservations/${id}/cancel/`,

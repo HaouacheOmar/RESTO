@@ -1,4 +1,10 @@
+import logging
+
 from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from django.db import transaction
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -11,6 +17,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.settings import api_settings as jwt_settings
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -20,7 +27,10 @@ from config.lists import ScopedListMixin
 
 from .models import JobApplication, User
 from .permissions import PUBLIC, RoleViewSet
-from .serializers import JobApplicationSerializer, RegisterSerializer, UserSerializer
+from .serializers import (JobApplicationSerializer, PasswordResetConfirmSerializer, RegisterSerializer,
+                          UserSerializer)
+
+log = logging.getLogger(__name__)
 
 
 # The refresh token never reaches JavaScript: it lives in an httpOnly cookie only sent to /api/auth/.
@@ -89,6 +99,57 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'register'
+
+
+RESET_EMAIL = """Bonjour {name},
+
+Vous avez demandé à réinitialiser votre mot de passe RESTO. Ce lien est valable une heure :
+
+{link}
+
+Si vous n’êtes pas à l’origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.
+
+RESTO"""
+
+
+class PasswordResetView(APIView):
+    """Emails a reset link. Always 204, so the form never reveals which addresses have an account."""
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = 'password_reset'
+
+    @extend_schema(request=inline_serializer('PasswordReset', {'email': serializers.EmailField()}), responses={204: None})
+    def post(self, request):
+        email = str(request.data.get('email', '')).strip()
+        for user in User.objects.filter(email__iexact=email, is_active=True) if email else []:
+            if not user.has_usable_password():
+                continue
+            uid, token = urlsafe_base64_encode(force_bytes(user.pk)), default_token_generator.make_token(user)
+            link = f'{settings.FRONTEND_URL}/mot-de-passe/nouveau?uid={uid}&token={token}'
+            try:
+                send_mail('RESTO : réinitialiser votre mot de passe',
+                          RESET_EMAIL.format(name=user.first_name or user.username, link=link), None, [user.email])
+            except Exception:  # an SMTP outage must not reveal anything or fail the request
+                log.exception('Password reset email to user %s failed', user.pk)
+        return Response(status=204)
+
+
+class PasswordResetConfirmView(APIView):
+    """Sets the new password from the emailed link, then signs out every session of that account."""
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = 'password_reset_confirm'
+
+    @extend_schema(request=PasswordResetConfirmSerializer, responses={204: None})
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        user.set_password(serializer.validated_data['password'])
+        user.save(update_fields=['password'])  # also invalidates the link: the token hashes the password
+        for token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=token)
+        return Response(status=204)
 
 
 class MeView(generics.RetrieveAPIView):

@@ -34,6 +34,8 @@ urlpatterns = [
     path('api/auth/logout/', accounts.LogoutView.as_view()),
     path('api/auth/register/', accounts.RegisterView.as_view()),
     path('api/auth/me/', accounts.MeView.as_view()),
+    path('api/auth/password/reset/', accounts.PasswordResetView.as_view()),
+    path('api/auth/password/reset/confirm/', accounts.PasswordResetConfirmView.as_view()),
     path('api/auth/me/availability/', accounts.AvailabilityView.as_view()),
     path('api/menu/', catalog.MenuView.as_view()),
     path('api/dashboard/', service.DashboardView.as_view()),
