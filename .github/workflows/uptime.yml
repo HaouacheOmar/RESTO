@@ -1,0 +1,79 @@
+name: uptime
+
+# Hourly, not more: every check wakes the free Render instance, and its 750 free hours a month are shared
+# by every service of the workspace.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      simulate_failure:
+        description: Add a check that always fails, to test the alert
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency: uptime
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API: https://resto-api-xvuz.onrender.com
+      SITE: https://resto-ruby-nine.vercel.app
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Probe the API, the site and the API through the site
+        id: probe
+        run: |
+          problems=""
+          # name, url, text the response must contain; 3 attempts (a sleeping free instance takes ~1 min to wake)
+          check() {
+            for attempt in 1 2 3; do
+              body=$(curl -sS --max-time 90 "$2" 2>&1 || true)
+              case "$body" in *"$3"*) echo "ok: $1"; return 0 ;; esac
+              sleep 20
+            done
+            echo "FAILED: $1"
+            problems="$problems- **$1** (\`$2\`): \`$(echo "$body" | head -c 200 | tr '\n`' ' ')\`"$'\n'
+          }
+          check "API and database" "$API/healthz/" '"database": "ok"'
+          check "Redis (live updates)" "$API/healthz/" '"redis": "ok"'
+          check "Site" "$SITE/" '<div id="root">'
+          check "API through the site" "$SITE/api/menu/" '"carte"'
+          if [ "${{ inputs.simulate_failure }}" = "true" ]; then
+            check "Simulated failure (alert test)" "$API/healthz/" 'this text is never there'
+          fi
+          {
+            echo "problems<<EOF"
+            printf '%s' "$problems"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open an issue when something is down
+        if: steps.probe.outputs.problems != ''
+        env:
+          PROBLEMS: ${{ steps.probe.outputs.problems }}
+        run: |
+          gh label create uptime --color B60205 --description "Automatic uptime alerts" 2>/dev/null || true
+          open=$(gh issue list --label uptime --state open --json number --jq '.[0].number')
+          body=$(printf 'The hourly check failed at %s UTC.\n\n%s\nRun: %s/%s/actions/runs/%s' \
+            "$(date -u '+%Y-%m-%d %H:%M')" "$PROBLEMS" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "$body"
+          else
+            gh issue create --label uptime --title "Live demo is down" --body "$body"
+          fi
+          exit 1
+
+      - name: Close the alert once everything is back
+        if: steps.probe.outputs.problems == ''
+        run: |
+          for n in $(gh issue list --label uptime --state open --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "Back up: every check passed at $(date -u '+%Y-%m-%d %H:%M') UTC."
+          done
