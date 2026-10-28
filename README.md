@@ -1,6 +1,6 @@
 # RESTO
 
-[![tests](https://github.com/HaouacheOmar/RESTO/actions/workflows/tests.yml/badge.svg)](https://github.com/HaouacheOmar/RESTO/actions/workflows/tests.yml)
+[![tests](https://github.com/HaouacheOmar/RESTO/actions/workflows/tests.yml/badge.svg)](https://github.com/HaouacheOmar/RESTO/actions/workflows/tests.yml) [![uptime](https://github.com/HaouacheOmar/RESTO/actions/workflows/uptime.yml/badge.svg)](https://github.com/HaouacheOmar/RESTO/actions/workflows/uptime.yml)
 
 A distributed restaurant management system. Every role in the restaurant (manager, reservation desk, chef, waiters, cashier, delivery drivers, parking attendant, stock keeper) and its clients work on the same live state: a reservation, an order or a payment shows up instantly on the screens that need it.
 
