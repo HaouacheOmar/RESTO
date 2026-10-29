@@ -10,6 +10,7 @@ root_packages =
     service
     analytics
     realtime
+    monitoring
     config
 
 [importlinter:contract:accounts-api]
@@ -21,6 +22,7 @@ source_modules =
     service
     analytics
     realtime
+    monitoring
 forbidden_modules =
     accounts
 ignore_imports =
@@ -38,6 +40,7 @@ source_modules =
     service
     analytics
     realtime
+    monitoring
 forbidden_modules =
     catalog
 ignore_imports =
@@ -55,6 +58,7 @@ source_modules =
     service
     analytics
     realtime
+    monitoring
 forbidden_modules =
     inventory
 ignore_imports =
@@ -72,6 +76,7 @@ source_modules =
     inventory
     analytics
     realtime
+    monitoring
 forbidden_modules =
     service
 ignore_imports =
@@ -89,6 +94,7 @@ source_modules =
     inventory
     service
     realtime
+    monitoring
 forbidden_modules =
     analytics
 ignore_imports =
@@ -106,10 +112,29 @@ source_modules =
     inventory
     service
     analytics
+    monitoring
 forbidden_modules =
     realtime
 ignore_imports =
     ** -> realtime.api
     *.tests -> realtime.**
+allow_indirect_imports = True
+unmatched_ignore_imports_alerting = none
+
+[importlinter:contract:monitoring-api]
+name = The other modules use monitoring only through monitoring.api
+type = forbidden
+source_modules =
+    accounts
+    catalog
+    inventory
+    service
+    analytics
+    realtime
+forbidden_modules =
+    monitoring
+ignore_imports =
+    ** -> monitoring.api
+    *.tests -> monitoring.**
 allow_indirect_imports = True
 unmatched_ignore_imports_alerting = none

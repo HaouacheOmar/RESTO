@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q, Subquery
+from django.db.models import Q
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
@@ -15,6 +15,7 @@ from accounts.api import AUTHENTICATED, HasRole, ReadOnlyRoleViewSet, RoleViewSe
 from config.lists import ScopedListMixin
 from realtime.api import broadcast
 
+from .api import tables_with_state
 from .models import Addition, Order, OrderItem, Reservation, RestaurantTable, Review, Seance
 from .serializers import (AdditionSerializer, OrderSerializer, ReservationSerializer, RestaurantTableSerializer,
                           ReviewSerializer,
@@ -443,8 +444,4 @@ class RestaurantTableViewSet(RoleViewSet):
     read_roles = AUTHENTICATED
 
     def get_queryset(self):
-        blocking = Reservation.blocking_walk_ins(timezone.now()).filter(table=OuterRef('pk')).order_by('reservation_time')
-        return RestaurantTable.objects.annotate(
-            is_occupied=Exists(Seance.objects.filter(table=OuterRef('pk'), status=Seance.Status.OPEN)),
-            reserved_at=Subquery(blocking.values('reservation_time')[:1]),
-        )
+        return tables_with_state()
