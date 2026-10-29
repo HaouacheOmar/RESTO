@@ -85,7 +85,9 @@ function CameraView({ camera, onReplayReadings }: {
 }
 
 /** one table drawn from above: its chairs, filled with the people the camera counts. */
-function TableDrawing({ table, camera }: { table: MonitoredTable; camera: CameraReading | null }) {
+function TableDrawing({ table, camera, cameraName }: {
+  table: MonitoredTable; camera: CameraReading | null; cameraName?: string
+}) {
   const status = statusOf(table, camera)
   const people = camera ? Math.min(camera.people, table.capacity) : 0
   const top = Math.ceil(table.capacity / 2)  // chairs above the table, the rest below
@@ -110,14 +112,35 @@ function TableDrawing({ table, camera }: { table: MonitoredTable; camera: Camera
           ? (camera ? <><strong>{camera.people}</strong> / {table.capacity} personnes</> : <>caméra indisponible · {table.capacity} places</>)
           : <>hors champ · {table.capacity} places</>}
       </p>
+      {cameraName && <p className="mt-camera">{cameraName}</p>}
     </li>
   )
 }
+
+/** a row of toggle buttons (zones, cameras). shown only when there is a choice to make. */
+function Choices<T extends string>({ label, options, current, onSelect }: {
+  label: string; options: { id: T; label: string }[]; current: T; onSelect: (id: T) => void
+}) {
+  if (options.length < 2) return null
+  return (
+    <div className="mt-filters" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button key={o.id} type="button" aria-pressed={o.id === current} onClick={() => onSelect(o.id)}>{o.label}</button>
+      ))}
+    </div>
+  )
+}
+
+const ALL = ''  // "every zone"
+const areaOf = (camera: { area: string }) => camera.area || 'Salle'
 
 export default function MonitoringPanel() {
   const tables = useApi<MonitoredTable[]>('monitoringTables')
   const cameras = useApi<MonitoringCamera[]>('monitoringCameras')
   const [replay, setReplay] = useState<Map<number, CameraReading> | null>(null)
+  // a restaurant can have several zones (salle vip, front de mer...), and several cameras per zone: pick one, then a camera
+  const [area, setArea] = useState(ALL)
+  const [cameraSlug, setCameraSlug] = useState('')
   const { reload: reloadTables } = tables
 
   // the worker's readings arrive live ("monitoring_update"); the core's changes are polled as well
@@ -127,16 +150,27 @@ export default function MonitoringPanel() {
     return () => clearInterval(timer)
   }, [reloadTables])
 
-  const camera = cameras.data?.[0]
+  const inArea = useMemo(() => (cameras.data ?? []).filter((c) => area === ALL || areaOf(c) === area), [cameras.data, area])
+  const camera = inArea.find((c) => c.slug === cameraSlug) ?? inArea[0]
+  // the demo clip's readings only belong to the tables of the camera that is playing it
   const readingOf = useMemo(() => (t: MonitoredTable) =>
-    (t.watched && replay?.has(t.number) ? replay.get(t.number)! : t.camera), [replay])
+    (t.camera_slug === camera?.slug && replay?.has(t.number) ? replay.get(t.number)! : t.camera), [replay, camera?.slug])
 
   if (!tables.data || !cameras.data) return <Loading failed={tables.failed || cameras.failed} />
+  const areas = [...new Set(cameras.data.map(areaOf))]
+  const names = new Map(cameras.data.map((c) => [c.slug, c.name]))
+  // in one zone, only the tables its cameras can see (a table belongs to a zone through its camera)
+  const shown = area === ALL ? tables.data : tables.data.filter((t) => inArea.some((c) => c.slug === t.camera_slug))
   const zones = [['STANDARD', 'Salle'], ['VIP', 'Salon VIP']] as const
   return (
     <section className="monitoring" aria-label="Surveillance des tables">
       <div className="monitoring-camera">
-        {camera ? <CameraView camera={camera} onReplayReadings={setReplay} /> : <p className="cctv-empty">Aucune caméra configurée.</p>}
+        <Choices label="Zone" current={area} onSelect={setArea}
+          options={areas.length > 1 ? [{ id: ALL, label: 'Toutes les zones' }, ...areas.map((a) => ({ id: a, label: a }))] : []} />
+        <Choices label="Caméra" current={camera?.slug ?? ''} onSelect={setCameraSlug}
+          options={inArea.map((c) => ({ id: c.slug, label: c.name }))} />
+        {/* key: another camera is a new player (its own stream ticket or demo clip) */}
+        {camera ? <CameraView key={camera.slug} camera={camera} onReplayReadings={setReplay} /> : <p className="cctv-empty">Aucune caméra configurée.</p>}
         <p className="privacy-note"><ShieldCheck {...ICON} /> Les personnes sont floutées à la source, sur la caméra : aucune image n’est enregistrée, seul le nombre de personnes par table est transmis.</p>
       </div>
       <div className="monitoring-map">
@@ -144,14 +178,18 @@ export default function MonitoringPanel() {
           {(['free', 'reserved', 'arrived', 'occupied', 'unserved'] as const).map((s) => <li key={s} className={`is-${s}`}>{LABELS[s]}</li>)}
         </ul>
         {zones.map(([zone, title]) => {
-          const list = tables.data!.filter((t) => t.zone === zone)
+          const list = shown.filter((t) => t.zone === zone)
           return list.length > 0 && (
             <section key={zone} aria-labelledby={`mt-${zone}`}>
               <h3 id={`mt-${zone}`} className="desk-section-title"><Eye {...ICON} /> {title}</h3>
-              <ul className="mt-grid">{list.map((t) => <TableDrawing key={t.number} table={t} camera={readingOf(t)} />)}</ul>
+              <ul className="mt-grid">{list.map((t) => (
+                <TableDrawing key={t.number} table={t} camera={readingOf(t)}
+                  cameraName={names.size > 1 && t.camera_slug ? names.get(t.camera_slug) : undefined} />
+              ))}</ul>
             </section>
           )
         })}
+        {shown.length === 0 && <p className="muted">Aucune table dans le champ des caméras de cette zone.</p>}
       </div>
     </section>
   )

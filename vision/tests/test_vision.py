@@ -88,7 +88,7 @@ def test_blur_changes_the_person_and_nothing_else():
     rng = np.random.default_rng(0)
     frame = rng.integers(0, 255, (200, 200, 3), dtype=np.uint8)
     original = frame.copy()
-    out = blur_people(frame, [(50, 50, 100, 150)])
+    out = blur_people(frame, [((50, 50, 100, 150), None)])
     assert not np.array_equal(out[60:140, 60:90], frame[60:140, 60:90])  # the person is changed
     assert np.array_equal(out[180:, 180:], frame[180:, 180:])  # far away pixels are untouched
     assert np.array_equal(frame, original)  # the input frame itself is never modified
@@ -101,6 +101,16 @@ def test_privacy_masks_are_always_pixelated():
     blur_masks(frame, [[[0.0, 0.0], [0.5, 0.0], [0.5, 0.5], [0.0, 0.5]]])  # the top-left quarter
     assert not np.array_equal(frame[:45, :45], original[:45, :45])
     assert np.array_equal(frame[60:, 60:], original[60:, 60:])
+
+
+def test_the_head_is_blurred_much_more_than_the_body():
+    rng = np.random.default_rng(3)
+    frame = rng.integers(0, 255, (300, 200, 3), dtype=np.uint8)
+    out = blur_people(frame, [((50, 0, 150, 300), None)])  # no face keypoints: the head is the top of the box
+    detail = lambda region: float(np.std(region.astype(np.float32)))  # how much fine detail is left
+    head, body = out[10:70, 70:130], out[150:250, 70:130]
+    assert detail(head) < detail(body)  # the face area keeps much less detail than the body
+    assert detail(body) < detail(frame[150:250, 70:130])  # and the body is blurred too
 
 
 # ---------------------------------------------------------------- stream ticket
@@ -179,3 +189,31 @@ def test_settings_are_read_from_the_environment(monkeypatch):
 
     import resto_vision.config as config
     assert importlib.reload(config).Settings().target_fps == 5.0
+
+
+def test_new_zones_drawn_by_the_manager_apply_without_a_restart():
+    settings = Settings(occupied_after=0, count_window=1)
+    left = Zone(1, 3, ((0.0, 0.0), (0.5, 0.0), (0.5, 1.0), (0.0, 1.0)))
+    right = Zone(2, 3, ((0.5, 0.0), (1.0, 0.0), (1.0, 1.0), (0.5, 1.0)))
+    pipeline = Pipeline(settings, [left], detector=FakeDetector(), tracker=FakeTracker([guest(800)]))
+    frame = np.full((300, 1000, 3), 128, dtype=np.uint8)
+    pipeline.process(frame, now=0)
+    pipeline.configure([right], masks=[[[0, 0], [0.1, 0], [0.1, 0.1]]])
+    pipeline.process(frame, now=0)
+    _, states, _ = pipeline.process(frame, now=1)
+    assert set(states) == {2} and states[2].people == 1  # the guest on the right is now counted
+
+
+def test_the_snapshot_needs_a_ticket_and_is_the_blurred_frame():
+    from fastapi.testclient import TestClient
+
+    from resto_vision.stream import FrameBuffer, create_app
+    buffer, secret, expires = FrameBuffer(), 's3cret', int(time.time()) + 60
+    signature = hmac.new(secret.encode(), f'salle.{expires}'.encode(), hashlib.sha256).hexdigest()
+    client = TestClient(create_app(buffer, 'salle', secret))
+    ticket = f'salle.{expires}.{signature}'
+    assert client.get(f'/salle/snapshot.jpg?ticket={ticket}').status_code == 503  # no frame yet
+    buffer.publish(b'blurred-jpeg')
+    assert client.get(f'/salle/snapshot.jpg?ticket={ticket}').content == b'blurred-jpeg'
+    assert client.get('/salle/snapshot.jpg?ticket=forged').status_code == 403
+    assert client.get(f'/terrasse/snapshot.jpg?ticket={ticket}').status_code == 403  # another camera

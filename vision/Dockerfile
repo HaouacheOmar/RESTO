@@ -9,8 +9,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 curl \
     && rm -rf /var/lib/apt/lists/*
 
-# cpu pytorch first (much smaller than the default cuda build), then the rest
-RUN pip install --no-cache-dir torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu
+# pytorch first. cpu by default (much smaller); for an nvidia gpu, build with docker-compose.gpu.yml,
+# which picks the cuda build of pytorch (the gpu itself is given to the container at run time)
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
+ARG TORCH_VERSION=2.15.0
+ARG TORCHVISION_VERSION=0.29.2
+RUN pip install --no-cache-dir torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} --index-url ${TORCH_INDEX}
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     && pip uninstall -y opencv-python && pip install --no-cache-dir opencv-python-headless==5.0.0.93

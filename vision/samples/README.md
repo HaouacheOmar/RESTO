@@ -1,7 +1,7 @@
 # demo samples
 
 - **clip**: "Customers in a minimalist style restaurant", Mixkit (https://mixkit.co/free-stock-video/customers-in-a-minimalist-style-restaurant-4385/), free under the Mixkit License. The raw clip is not stored here: the Docker build downloads it and checks its sha-256.
-- **zones-mixkit-4385.json**: where the three visible tables are (tables n°1, 3 and 4 of the demo restaurant), plus the privacy masks (the far end of the room and the aisle, always pixelated). Same format as the api's camera config.
+- **zones-mixkit-4385.json**: where the three visible tables are (tables n°1, 3 and 4 of the demo restaurant), plus the privacy masks (the far end of the room and the aisle, always blurred), and each tabletop outline (only drawn on the video). Same format as the api's camera config.
 - **timeline.json**: the table readings produced by `python -m resto_vision render` on that clip. The blurred result and this timeline are served by the frontend in `client/public/monitoring/` for the public demo.
 
 To re-render the demo assets:

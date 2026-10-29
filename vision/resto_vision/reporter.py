@@ -34,6 +34,16 @@ class Reporter:
                 delay = min(delay * 2, 30)
         raise RuntimeError('could not get the camera configuration from the api')
 
+    def refresh(self):
+        """the camera's configuration again, or None if the api does not answer (we keep the old one)."""
+        try:
+            response = self.client.get('/api/monitoring/device/config/')
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as error:
+            log.warning('could not refresh the configuration: %s', error)
+            return None
+
     def maybe_send(self, states, now):
         """send when a table changed, or at least every `report_every` seconds (a heartbeat)."""
         tables = [{'table_number': s.table_number, 'people': s.people, 'occupied': s.occupied, 'since': iso(s.since)}

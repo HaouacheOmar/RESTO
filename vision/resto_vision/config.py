@@ -20,10 +20,11 @@ class Settings:
     # the model: yolo26 nano pose is small and fast enough for a cpu; "cuda:0" uses an nvidia gpu
     model: str = _env('MODEL', 'yolo26n-pose.pt')
     device: str = _env('DEVICE', 'cpu')
-    image_size: int = int(_env('IMAGE_SIZE', '960'))  # bigger finds small, far away people (to blur them)
+    image_size: int = int(_env('IMAGE_SIZE', '640'))  # 960 finds smaller, far people but is slower; masks cover the far end
     count_confidence: float = float(_env('COUNT_CONFIDENCE', '0.40'))  # sure enough to count someone
     blur_confidence: float = float(_env('BLUR_CONFIDENCE', '0.10'))  # much lower: when in doubt, blur
-    target_fps: float = float(_env('TARGET_FPS', '8'))  # frames analysed per second (the rest are skipped)
+    target_fps: float = float(_env('TARGET_FPS', '25'))  # most frames shown per second (smooth video)
+    analysis_fps: float = float(_env('ANALYSIS_FPS', '5'))  # table counting per second (deepsort is slower)
 
     # smoothing: how long a table must look occupied (or empty) before we believe it
     occupied_after: float = float(_env('OCCUPIED_AFTER', '4'))  # seconds
@@ -32,6 +33,8 @@ class Settings:
 
     # how often we send the counts (also when nothing changed, so the api knows we are alive)
     report_every: float = float(_env('REPORT_EVERY', '3'))
+    # how often we read the camera's zones and masks again (the manager may redraw them in the app)
+    config_every: float = float(_env('CONFIG_EVERY', '60'))
 
     # the blurred video stream
     stream_port: int = int(_env('STREAM_PORT', '8090'))

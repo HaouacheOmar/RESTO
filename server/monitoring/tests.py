@@ -52,7 +52,7 @@ class MonitoringTests(APITestCase):
     def test_worker_signs_in_with_its_token_and_gets_its_zones(self):
         self.assertEqual(self.client.get('/api/monitoring/device/config/', HTTP_AUTHORIZATION='Device wrong').status_code, 401)
         config = self.client.get('/api/monitoring/device/config/', HTTP_AUTHORIZATION=f'Device {self.token}').json()
-        self.assertEqual(config['zones'], [{'table_number': 1, 'capacity': 3, 'polygon': SQUARE}])
+        self.assertEqual(config['zones'], [{'table_number': 1, 'capacity': 3, 'polygon': SQUARE, 'outline': []}])
         self.camera.refresh_from_db()
         self.assertIsNotNone(self.camera.last_seen_at)  # shown as online
 
@@ -61,6 +61,7 @@ class MonitoringTests(APITestCase):
         t1 = self.table(1)
         self.assertEqual((t1['capacity'], t1['is_occupied'], t1['camera']['people']), (3, False, 2))
         self.assertTrue(t1['watched'])
+        self.assertEqual(t1['camera_slug'], 'salle')  # which camera watches it
         self.assertFalse(self.table(2)['watched'])  # outside the camera's view
 
         self.assertEqual(self.send((1, 0)).status_code, 204)  # they left: overwritten, no history kept
@@ -121,3 +122,71 @@ class MonitoringTests(APITestCase):
             cameras = desk.get('/api/monitoring/cameras/').json()
             self.assertEqual((cameras[0]['online'], cameras[0]['live']), (True, True))
         self.assertEqual(self.as_(R.SERVER).post('/api/monitoring/cameras/salle/stream/').status_code, 403)
+
+
+class CameraSetupTests(APITestCase):
+    """the manager adds cameras (one per area, like the vip room or the sea-view room, or several for a big room) and draws their tables."""
+
+    def setUp(self):
+        self.manager = User.objects.create_user(username='boss', password='x', role=R.ADMIN_MANAGER)
+        self.desk = User.objects.create_user(username='desk', password='x', role=R.RESERVATION_MANAGER)
+        for number in (1, 2, 3):
+            RestaurantTable.objects.create(number=number, capacity=4)
+        self.client.force_authenticate(self.manager)
+
+    def add(self, slug, area, *tables):
+        return self.client.post('/api/monitoring/setup/cameras/', {
+            'slug': slug, 'name': slug.title(), 'area': area,
+            'zones': [{'table_number': n, 'polygon': SQUARE} for n in tables]}, format='json')
+
+    def test_only_the_manager_sets_up_cameras(self):
+        self.client.force_authenticate(self.desk)
+        self.assertEqual(self.client.get('/api/monitoring/setup/cameras/').status_code, 403)
+        self.assertEqual(self.add('salle', 'RDC').status_code, 403)
+
+    def test_a_new_camera_gets_a_token_once_and_its_worker_reads_the_drawn_tables(self):
+        created = self.add('salle', 'Rez-de-chaussée', 1, 2)
+        self.assertEqual(created.status_code, 201)
+        token = created.json()['token']
+        self.assertEqual([z['table_number'] for z in created.json()['zones']], [1, 2])
+        self.assertNotIn('token', self.client.get('/api/monitoring/setup/cameras/').json()[0])  # never again
+        config = APIClient().get('/api/monitoring/device/config/', HTTP_AUTHORIZATION=f'Device {token}').json()
+        self.assertEqual([z['table_number'] for z in config['zones']], [1, 2])
+
+        # the manager redraws: table 2 leaves, table 3 comes in, with a tabletop outline and a privacy mask
+        changed = self.client.patch('/api/monitoring/setup/cameras/salle/', {
+            'zones': [{'table_number': 3, 'polygon': SQUARE, 'outline': SQUARE}], 'privacy_masks': [SQUARE]},
+            format='json')
+        self.assertEqual(changed.status_code, 200, changed.content)
+        self.assertEqual(changed.json()['zones'], [{'table_number': 3, 'polygon': SQUARE, 'outline': SQUARE}])
+        self.assertEqual(Camera.objects.get().privacy_masks, [SQUARE])
+
+        new = self.client.post('/api/monitoring/setup/cameras/salle/token/').json()['token']
+        self.assertEqual(APIClient().get('/api/monitoring/device/config/', HTTP_AUTHORIZATION=f'Device {token}').status_code, 401)
+        self.assertEqual(APIClient().get('/api/monitoring/device/config/', HTTP_AUTHORIZATION=f'Device {new}').status_code, 200)
+
+    def test_several_cameras_never_count_the_same_table(self):
+        self.add('vip', 'Salle VIP', 1, 2)
+        refused = self.add('mer', 'Salle front de mer', 2, 3)
+        self.assertEqual(refused.status_code, 400)
+        self.assertIn('déjà suivie par la caméra « Vip »', str(refused.json()))
+        self.assertEqual(self.add('mer', 'Salle front de mer', 3).status_code, 201)
+        bad = self.client.patch('/api/monitoring/setup/cameras/mer/', {
+            'zones': [{'table_number': 3, 'polygon': [[0, 0], [2, 0], [1, 1]]}]}, format='json')
+        self.assertEqual(bad.status_code, 400)  # a point outside the image
+        self.assertEqual(self.client.patch('/api/monitoring/setup/cameras/mer/', {'slug': 'x'}, format='json').status_code, 400)
+
+        self.client.force_authenticate(self.desk)
+        tables = {t['number']: t['camera_slug'] for t in self.client.get('/api/monitoring/tables/').json()}
+        self.assertEqual(tables, {1: 'vip', 2: 'vip', 3: 'mer'})
+        areas = [(c['slug'], c['area']) for c in self.client.get('/api/monitoring/cameras/').json()]
+        self.assertEqual(areas, [('mer', 'Salle front de mer'), ('vip', 'Salle VIP')])
+
+    def test_the_camera_list_costs_the_same_whatever_the_size(self):
+        self.add('vip', 'Salle VIP', 1)
+        with self.assertNumQueries(3):  # cameras, their zones, the zones' tables
+            self.client.get('/api/monitoring/setup/cameras/')
+        self.add('mer', 'Salle front de mer', 2, 3)
+        self.add('terrasse', 'Terrasse')
+        with self.assertNumQueries(3):
+            self.client.get('/api/monitoring/setup/cameras/')

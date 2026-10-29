@@ -18,6 +18,7 @@ import cv2
 from .config import Settings
 from .pipeline import Pipeline
 from .reporter import Reporter
+from .source import FrameSource
 from .stream import FrameBuffer, create_app
 from .zones import zones_from_config
 
@@ -40,34 +41,49 @@ def run(settings):
     threading.Thread(target=server.run, daemon=True).start()
 
     pipeline = Pipeline(settings, zones, masks=config.get('privacy_masks', []))
-    capture = cv2.VideoCapture(settings.source)
-    is_file = not settings.source.lower().startswith(('rtsp://', 'http://', 'https://'))
-    file_fps = capture.get(cv2.CAP_PROP_FPS) or 25
-    step = 1.0 / settings.target_fps
-    next_frame_at = time.monotonic()
+    source = FrameSource(settings.source, settings.loop)
 
+    # the analysis thread: deepsort + counts + reports, on the newest detections, a few times per second
+    handoff = {'item': None}  # the latest (frame, detections) from the display loop; older ones are dropped
+    handoff_lock = threading.Lock()
+
+    def analysis():
+        every, configured = 1.0 / settings.analysis_fps, time.monotonic()
+        while True:
+            started = time.monotonic()
+            if started - configured >= settings.config_every:  # the manager may have redrawn the tables
+                configured = started
+                fresh = reporter.refresh()
+                if fresh and fresh != config:
+                    config.update(fresh)
+                    pipeline.configure(zones_from_config(fresh['zones']), fresh.get('privacy_masks', []))
+                    log.info('new configuration: watching %d table(s)', len(fresh['zones']))
+            with handoff_lock:
+                item, handoff['item'] = handoff['item'], None
+            if item is not None:
+                try:
+                    states = pipeline.analyse(item[0], item[1], time.time())
+                    reporter.maybe_send(states, time.time())
+                except Exception:
+                    log.exception('analysis failed')  # the display keeps running and blurring
+            time.sleep(max(0.0, every - (time.monotonic() - started)))
+
+    threading.Thread(target=analysis, daemon=True).start()
+
+    # the display loop: newest frame -> detect -> blur -> publish, as fast as the cpu/gpu allows (capped)
+    every, number = 1.0 / settings.target_fps, 0
     while True:
-        ok, frame = capture.read()
-        if not ok:
-            if is_file and settings.loop:  # demo file: start again from the beginning
-                capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                continue
-            log.warning('video source lost, reconnecting in 2s')
-            time.sleep(2)
-            capture.release()
-            capture = cv2.VideoCapture(settings.source)
-            continue
-        if is_file:
-            time.sleep(1.0 / file_fps)  # play a file at its real speed, like a camera would
-        if time.monotonic() < next_frame_at:
-            continue  # skip frames to stay at target_fps (saves cpu, plenty for table occupancy)
-        next_frame_at = time.monotonic() + step
-
-        output, states, stats = pipeline.process(frame, time.time())
+        started = time.monotonic()
+        frame, number = source.latest(after=number)
+        output, detections, stats = pipeline.display(frame)
+        with handoff_lock:
+            handoff['item'] = (frame, detections)
         ok, jpeg = cv2.imencode('.jpg', output, [cv2.IMWRITE_JPEG_QUALITY, settings.jpeg_quality])
         if ok:
-            buffer.publish(jpeg.tobytes(), **stats)
-        reporter.maybe_send(states, time.time())
+            with pipeline.lock:
+                occupied = sum(1 for s in pipeline.states.values() if s.occupied)
+            buffer.publish(jpeg.tobytes(), tables_occupied=occupied, **stats)
+        time.sleep(max(0.0, every - (time.monotonic() - started)))
 
 
 def render(settings, input_path, zones_path, out_path, timeline_path):

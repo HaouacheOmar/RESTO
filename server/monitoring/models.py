@@ -27,16 +27,19 @@ class Camera(models.Model):
     """
     slug = models.SlugField(unique=True)  # short name used in urls, for example "salle"
     name = models.CharField(max_length=100)
+    # the area of the restaurant the camera covers, named by the manager: "Salle VIP", "Salle front de mer",
+    # "Terrasse"... an area can have several cameras. the screens group cameras (and their tables) by it
+    area = models.CharField(max_length=60, blank=True)
     token_hash = models.CharField(max_length=64, unique=True)
     is_active = models.BooleanField(default=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)  # last time the worker talked to us
     replay_video = models.CharField(max_length=300, blank=True)
     replay_timeline = models.CharField(max_length=300, blank=True)
-    # areas always pixelated by the worker (doors, windows onto the street): a list of polygons
+    # areas always blurred by the worker (doors, windows onto the street): a list of polygons
     privacy_masks = models.JSONField(default=list, blank=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ['area', 'name']
 
     def __str__(self):
         return self.name
@@ -67,7 +70,13 @@ class TableZone(models.Model):
     """where a table is in the camera image, drawn as a polygon (a shape made of points)."""
     camera = models.ForeignKey(Camera, on_delete=models.CASCADE, related_name='zones')
     table = models.OneToOneField(TABLE, on_delete=models.CASCADE, related_name='+')  # one zone per table
-    polygon = models.JSONField(validators=[validate_polygon])
+    polygon = models.JSONField(validators=[validate_polygon])  # the table and its chairs: used for counting
+    # the tabletop itself, only used to draw the table on the video (empty: the worker draws the zone)
+    outline = models.JSONField(default=list, blank=True)
+
+    def clean(self):
+        if self.outline:
+            validate_polygon(self.outline)
 
     def __str__(self):
         return f'{self.camera} · {self.table}'

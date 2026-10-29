@@ -3,6 +3,10 @@
 - GET /healthz            is the worker alive and reading video?
 - GET /metrics            numbers for monitoring tools (prometheus text format)
 - GET /<camera>/mjpeg     the blurred video, as mjpeg (a stream of jpeg images that an <img> tag can show)
+- GET /<camera>/snapshot.jpg   one blurred image, the background the manager draws the tables on
+
+a restaurant with several cameras (floors, big rooms) runs one worker per camera; the reverse proxy sends
+/stream/<camera>/... to the right worker.
 
 the video needs a ticket made by the resto api (signed with a secret both sides know), so only the
 manager and the reservation desk can open it. the frames here are always the blurred ones.
@@ -14,7 +18,7 @@ import threading
 import time
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import PlainTextResponse, Response, StreamingResponse
 
 
 def check_ticket(ticket, slug, secret, now=None):
@@ -64,10 +68,21 @@ def create_app(buffer, camera_slug, secret):
             values = dict(buffer.metrics)
         return ''.join(f'resto_vision_{name} {value}\n' for name, value in values.items())
 
-    @app.get('/{slug}/mjpeg')
-    async def mjpeg(slug: str, ticket: str = Query(...)):
+    def allow(slug, ticket):
         if slug != camera_slug or not check_ticket(ticket, slug, secret):
             raise HTTPException(status_code=403, detail='invalid or expired ticket')
+
+    @app.get('/{slug}/snapshot.jpg')
+    def snapshot(slug: str, ticket: str = Query(...)):
+        allow(slug, ticket)
+        jpeg, _ = buffer.latest()
+        if jpeg is None:
+            raise HTTPException(status_code=503, detail='no frame yet')
+        return Response(jpeg, media_type='image/jpeg', headers={'Cache-Control': 'no-store'})
+
+    @app.get('/{slug}/mjpeg')
+    async def mjpeg(slug: str, ticket: str = Query(...)):
+        allow(slug, ticket)
 
         async def frames():
             last = 0.0

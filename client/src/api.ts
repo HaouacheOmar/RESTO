@@ -59,6 +59,10 @@ const ENDPOINTS = {
   monitoringTables: '/api/monitoring/tables/',
   monitoringCameras: '/api/monitoring/cameras/',
   monitoringStream: (slug: string) => `/api/monitoring/cameras/${slug}/stream/`,
+  // camera setup (manager only)
+  cameraSetups: '/api/monitoring/setup/cameras/',
+  cameraSetup: (slug: string) => `/api/monitoring/setup/cameras/${slug}/`,
+  cameraToken: (slug: string) => `/api/monitoring/setup/cameras/${slug}/token/`,
   realtime: '/ws/',
 } as const
 
@@ -470,16 +474,30 @@ export interface MonitoredTable {
   seance_name: string | null
   reserved_at: string | null
   watched: boolean
+  camera_slug: string | null  // the camera that watches it (a restaurant can have several)
   camera: CameraReading | null
 }
 
 export interface MonitoringCamera {
   slug: string
   name: string
+  area: string  // the zone of the restaurant it covers, named by the manager ("Salle VIP"...)
   online: boolean
   live: boolean
   replay_video: string
   replay_timeline: string
+}
+
+/** a point on the camera image, in fractions of its width and height (0 to 1). */
+export type Point = [number, number]
+
+/** a camera as the manager sets it up: where it is, the tables drawn on its image, the privacy masks. */
+export interface CameraSetup extends MonitoringCamera {
+  is_active: boolean
+  last_seen_at: string | null
+  privacy_masks: Point[][]
+  zones: { table_number: number; polygon: Point[]; outline: Point[] }[]
+  token?: string  // only right after the camera is created
 }
 
 /** the readings of the demo clip, recorded by the vision worker ("render" command). */
