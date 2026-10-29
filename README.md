@@ -104,7 +104,7 @@ The specs are written in French, like the restaurant's vocabulary.
 
 The container applies migrations and creates the demo restaurant on start (`SEED_DEMO=0` turns that off). Variables: `server/.env.example`.
 
-**For a real restaurant** (one Linux server, e.g. an Icosnet VM): `docker-compose.prod.yml` adds HTTPS (Caddy), no demo data, required secrets, restart policies and daily backups. Step-by-step guide (French): [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md).
+**For a real restaurant** (one Linux server, e.g. an Icosnet VM): `docker-compose.prod.yml` adds HTTPS (Caddy), no demo data, required secrets, restart policies and daily backups. Step-by-step guide (French): [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md); what to rent (GPU server, VPN, sizing): [`docs/HEBERGEMENT.md`](docs/HEBERGEMENT.md).
 
 ## Roadmap
 

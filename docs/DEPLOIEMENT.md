@@ -2,6 +2,8 @@
 
 Installer RESTO pour un vrai restaurant, sur **un serveur Linux** : une VM cloud chez Icosnet, ou chez n'importe quel autre hébergeur. Toute l'application tourne avec `docker-compose.prod.yml`.
 
+Ce qu'il faut louer chez l'hébergeur (serveur GPU, VPN, dimensionnement) : [HEBERGEMENT.md](HEBERGEMENT.md).
+
 Le fichier `docker-compose.yml` reste celui du poste de développement : la démo locale sur `http://localhost:8088`, avec les comptes de démonstration.
 
 | | Local (`docker-compose.yml`) | Production (`docker-compose.prod.yml`) |
