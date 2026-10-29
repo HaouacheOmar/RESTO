@@ -32,6 +32,8 @@ class Camera(models.Model):
     last_seen_at = models.DateTimeField(null=True, blank=True)  # last time the worker talked to us
     replay_video = models.CharField(max_length=300, blank=True)
     replay_timeline = models.CharField(max_length=300, blank=True)
+    # areas always pixelated by the worker (doors, windows onto the street): a list of polygons
+    privacy_masks = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ['name']

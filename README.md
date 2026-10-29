@@ -19,6 +19,7 @@ A distributed restaurant management system. Every role in the restaurant (manage
 - **Stock**: shortages, restock requests, supplier selection.
 - **Reviews and dashboard**: clients rate what they actually had within 7 days; the manager sees revenue, best sellers, staff ratings and incidents.
 - **Real time**: WebSocket notifications per role, authenticated with the same JWT as the API.
+- **Table monitoring** (manager and reservation desk): a camera counts the guests seated at each table (YOLO26 pose + DeepSORT) and the screen shows the blurred CCTV next to a table map coloured by status, with *people / capacity*. Everyone is blurred at the source and no image is stored. See [`vision/`](vision/).
 
 ## Architecture
 

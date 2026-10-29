@@ -211,5 +211,36 @@ Les écrans qui reçoivent sont ouverts avant l'action : ce qui y apparaît sans
 - **Erreurs** : Sentry, actif seulement si `SENTRY_DSN` (API) ou `VITE_SENTRY_DSN` (build du frontend) est défini ; aucune donnée personnelle envoyée. Sans DSN au build, le code Sentry n'est même pas inclus.
 - **En-têtes du frontend** (`client/vercel.json`) : Content-Security-Policy (scripts du site seulement ; images Unsplash et Supabase ; polices Google ; WebSocket vers l'API ; Sentry), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
 
-## 9. Évolutions prévues
+## 9. Surveillance des tables (`monitoring/` + `vision/`)
+
+Réservée au **gérant** et au **responsable des réservations**. Un module de plus, qui **lit** le cœur sans jamais le modifier : une Séance ou une réservation ne change que par ses actions habituelles. Si une caméra tombe, le restaurant fonctionne exactement comme avant (`monitoring/api.py` n'expose rien : aucun module ne dépend des caméras).
+
+**Chaîne de traitement** (le *vision worker*, un service à part dans `vision/`, sur le lieu de la caméra) :
+
+1. **Détection** : YOLO26 pose (`yolo26n-pose`) trouve chaque personne et ses 17 points du corps.
+2. **Suivi** : DeepSORT garde le même identifiant à une personne d'une image à l'autre (filtre de Kalman + apparence MobileNet), pour qu'une personne cachée un instant ne fasse pas varier le compte.
+3. **Assis ou debout** : genoux presque à hauteur des hanches = assis ; jambes cachées sous la table = forme de la boîte. Seules les personnes assises comptent (un serveur debout à côté d'une table n'est pas un client).
+4. **Table** : le point entre les hanches est dans le polygone de la table (fractions de l'image, configuré sur le serveur).
+5. **Lissage** : médiane des comptes sur quelques secondes, puis attente avant de changer d'état (4 s pour « occupée », 20 s pour « vide » : un client peut s'absenter).
+6. **Floutage** : toute personne détectée (seuil bas, 10 %) ou seulement prédite par le suivi est pixellisée avant que l'image ne quitte le worker, plus des **masques de confidentialité** toujours pixellisés (fond de salle, passage, vitrine sur la rue). En cas d'erreur, une image noire, jamais l'image brute.
+7. **Envoi** : `{table, personnes, occupée, depuis}` à l'API toutes les 3 s (et à chaque changement). Le flux vidéo flouté (MJPEG) n'est servi qu'avec un ticket signé.
+
+**Côté API** :
+
+| Endpoint | Accès | Rôle |
+| :--- | :--- | :--- |
+| `GET monitoring/tables/` | gérant, responsable | Chaque table : l'état du cœur (`is_occupied`, `reserved_at`, `seance_name`) et, si la lecture a moins de 30 s, ce que voit la caméra (`people`, `occupied`) |
+| `GET monitoring/cameras/` | gérant, responsable | Caméras, en ligne ou non, flux en direct possible ou séquence de démonstration |
+| `POST monitoring/cameras/{slug}/stream/` | gérant, responsable | URL du flux flouté, signée HMAC, valable 60 s (le worker vérifie la signature avec le secret partagé `MONITORING_STREAM_SECRET`) |
+| `GET monitoring/device/config/`, `POST monitoring/device/observations/` | worker (`Authorization: Device <jeton>`) | Zones et masques de la caméra ; envoi des lectures. Seule l'empreinte SHA-256 du jeton est stockée |
+
+Une lecture écrase la précédente (une ligne par table, **aucun historique**). L'envoi d'un lot coûte 7 requêtes quel que soit le nombre de tables (pas de N+1 : une lecture des anciennes valeurs, un `bulk_create` en *upsert*), vérifié par un test. Un changement est poussé en direct (`monitoring_update`, groupe `reservations`, que rejoint aussi le gérant).
+
+**Couleur d'une table** (le cœur décide toujours en premier) : Séance ouverte → **Occupée** (encre, avec le nombre vu par la caméra) ; réservation en cours → **Réservée** (crème et or), ou **Clients arrivés ?** si la caméra voit des personnes assises (à installer au check-in) ; sinon personnes assises sans Séance → **Sans séance** (danger : quelqu'un doit s'en occuper) ; sinon **Libre**. Une table de 3 avec 2 clients est occupée : la place libre n'est pas proposée.
+
+**Déploiement** : `docker compose --profile vision up` lance le worker (image CPU ; modèle et clip de démonstration téléchargés à la construction et vérifiés par SHA-256 ; utilisateur non root ; `/healthz` et `/metrics`). nginx sert le flux sous `/stream/`. Une caméra réelle : `VIDEO_SOURCE=rtsp://…`, `DEVICE=cuda:0` pour un GPU, zones et masques créés avec `manage.py monitoring_camera`. Sur la démo publique, aucun worker ne tourne : l'écran rejoue `client/public/monitoring/demo.mp4` (flouté à l'avance) avec `timeline.json`, produits par `python -m resto_vision render`.
+
+**Confidentialité** : la salle est déclarée sous vidéosurveillance (pied de page du site, formulaire de réservation), conformément à la loi 18-07 ; aucune image n'est enregistrée, aucune reconnaissance faciale, seuls des nombres sortent du worker.
+
+## 10. Évolutions prévues
 Flux cuisine pour le Chef, Addition partagée.

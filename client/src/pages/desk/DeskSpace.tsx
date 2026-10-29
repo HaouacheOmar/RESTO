@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 
 import { useApi, usePagedApi, type Order, type Reservation, type User } from '../../api'
 import { rise } from '../../motion'
@@ -13,7 +13,10 @@ import Deliveries from './Deliveries'
 import ReservationCard from './ReservationCard'
 import './desk.css'
 
-const TAB_IDS = ['aujourdhui', 'a-valider', 'a-venir', 'livraisons', 'historique'] as const
+// the camera panel is loaded only when its tab is opened (it is not needed by the other screens)
+const MonitoringPanel = lazy(() => import('../monitoring/MonitoringPanel'))
+
+const TAB_IDS = ['aujourdhui', 'a-valider', 'a-venir', 'livraisons', 'historique', 'surveillance'] as const
 
 const NOTIFICATIONS: Notifications = {
   reservation_created: (p) => `Nouvelle réservation : ${p.client_name || p.client_username}, ${p.guest_count} pers.`,
@@ -55,7 +58,7 @@ export default function DeskSpace({ user }: { user: User }) {
   const all = reservations.data ?? []
   const today = new Date(now)
   const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime()
-  const lists: Record<Exclude<(typeof TAB_IDS)[number], 'livraisons'>, Reservation[]> = {  // all = the active ones
+  const lists: Record<Exclude<(typeof TAB_IDS)[number], 'livraisons' | 'surveillance'>, Reservation[]> = {  // all = the active ones
     aujourdhui: all.filter((r) => sameDay(r.reservation_time, today)),
     'a-valider': all.filter((r) => r.status === 'PENDING'),
     'a-venir': all.filter((r) => r.status === 'CONFIRMED' && new Date(r.reservation_time).getTime() >= endOfToday),
@@ -69,6 +72,7 @@ export default function DeskSpace({ user }: { user: User }) {
     { id: 'a-venir' as const, label: 'À venir' },
     { id: 'livraisons' as const, label: 'Livraisons', count: toDeliver },
     { id: 'historique' as const, label: 'Historique' },
+    { id: 'surveillance' as const, label: 'Surveillance' },
   ]
 
   return (
@@ -79,7 +83,9 @@ export default function DeskSpace({ user }: { user: User }) {
       </motion.header>
 
       <Tabs tabs={tabs} current={tab} onSelect={select} label="Réservations et livraisons">
-        {tab === 'livraisons'
+        {tab === 'surveillance'
+          ? <Suspense fallback={<Loading failed={false} />}><MonitoringPanel /></Suspense>
+          : tab === 'livraisons'
           ? (orders.data && drivers.data
             ? <Deliveries orders={orders.data} drivers={drivers.data} onChange={refresh} />
             : <Loading failed={orders.failed || drivers.failed} />)

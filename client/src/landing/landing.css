@@ -116,3 +116,4 @@
 .site-footer .logo { color: var(--color-on-dark); font-size: var(--text-lg); }
 .site-footer a { color: var(--color-on-dark-muted); text-underline-offset: 4px; }
 .site-footer a:hover { color: var(--color-champagne); }
+.footer-notice { margin: 0; padding-bottom: var(--space-8); font-size: var(--text-sm); }

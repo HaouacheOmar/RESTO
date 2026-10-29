@@ -100,6 +100,7 @@ class DeviceConfigView(APIView):
         camera = request.auth
         zones = camera.zones.select_related('table').order_by('table__number')
         return Response({'camera': camera.slug, 'stale_after_seconds': settings.MONITORING_STALE_SECONDS,
+                         'privacy_masks': camera.privacy_masks,
                          'zones': [{'table_number': z.table.number, 'capacity': z.table.capacity,
                                     'polygon': z.polygon} for z in zones]})
 

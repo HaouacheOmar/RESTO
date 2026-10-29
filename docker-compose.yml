@@ -31,6 +31,10 @@ services:
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
       RATE_LIMIT_SCALE: ${RATE_LIMIT_SCALE:-1}  # the end-to-end tests raise it
+      # table monitoring: local-only values; the worker below shares them
+      MONITORING_STREAM_URL: /stream
+      MONITORING_STREAM_SECRET: ${MONITORING_STREAM_SECRET:-local-stream-secret}
+      MONITORING_DEMO_TOKEN: ${MONITORING_DEMO_TOKEN:-local-demo-token}
     volumes: [media:/app/media]
     depends_on:
       postgres: { condition: service_healthy }
@@ -39,6 +43,21 @@ services:
   web:
     build: ./client
     ports: ["8088:80"]
+    depends_on: [backend]
+
+  # the vision worker (yolo pose + deepsort): only with `docker compose --profile vision up`
+  vision:
+    build: ./vision
+    profiles: [vision]
+    environment:
+      RESTO_API_URL: http://backend:8000
+      RESTO_DEVICE_TOKEN: ${MONITORING_DEMO_TOKEN:-local-demo-token}
+      MONITORING_STREAM_SECRET: ${MONITORING_STREAM_SECRET:-local-stream-secret}
+      VIDEO_SOURCE: samples/restaurant.mp4  # a camera would be rtsp://...
+      # the demo clip is a time-lapse: shorter delays than a real camera (4 s / 20 s)
+      OCCUPIED_AFTER: "0.5"
+      EMPTY_AFTER: "1.5"
+      COUNT_WINDOW: "1"
     depends_on: [backend]
 
 volumes:

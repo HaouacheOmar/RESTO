@@ -245,6 +245,10 @@ function Footer() {
         <p>© {YEAR} RESTO · Cuisine algérienne contemporaine</p>
         <Link to="/espace">Espace personnel</Link>
       </div>
+      {/* the restaurant declares its cameras (law 18-07): same words as the booking form */}
+      <p className="container footer-notice">
+        Salle placée sous vidéosurveillance pour le suivi des tables. Les personnes sont floutées à la source ; aucune image n’est enregistrée.
+      </p>
     </footer>
   )
 }
