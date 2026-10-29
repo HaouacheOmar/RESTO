@@ -102,7 +102,9 @@ The specs are written in French, like the restaurant's vocabulary.
 | Dish photos | Supabase Storage, S3 protocol (`S3_*` variables) |
 | Redis | Render Key Value (the free instance, shared on its own db index: `REDIS_DB`) |
 
-The container applies migrations and creates the demo restaurant on start. Variables: `server/.env.example`.
+The container applies migrations and creates the demo restaurant on start (`SEED_DEMO=0` turns that off). Variables: `server/.env.example`.
+
+**For a real restaurant** (one Linux server, e.g. an Icosnet VM): `docker-compose.prod.yml` adds HTTPS (Caddy), no demo data, required secrets, restart policies and daily backups. Step-by-step guide (French): [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md).
 
 ## Roadmap
 
