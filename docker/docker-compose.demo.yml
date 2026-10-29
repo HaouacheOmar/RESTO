@@ -1,0 +1,22 @@
+# Client demo from home: the full local stack (GPU worker included) reachable from anywhere through a temporary
+# Cloudflare tunnel, so a laptop at the client's only needs a browser. Guide: docs/DEMO_CLIENT.md
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.gpu.yml -f docker/docker-compose.demo.yml --profile vision up -d --build
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.demo.yml logs tunnel | grep trycloudflare.com   # the https address
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.demo.yml stop tunnel                              # right after the demo
+# The demo accounts (public password) are reachable while the tunnel runs: close it after the demo.
+services:
+  backend:
+    environment:
+      ALLOWED_HOSTS: localhost,127.0.0.1,backend,.trycloudflare.com  # the tunnel's address (also checked for websockets)
+      CSRF_TRUSTED_ORIGINS: https://*.trycloudflare.com
+
+  vision-salle:
+    environment:
+      # a home connection sends little: a lighter stream (about 2 Mbit/s instead of 5)
+      TARGET_FPS: "6"
+      JPEG_QUALITY: "45"
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.1
+    command: tunnel --no-autoupdate --url http://web:80  # a "quick tunnel": no account, a new random address each start
+    depends_on: [web]
