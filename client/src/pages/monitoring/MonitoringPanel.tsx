@@ -28,6 +28,7 @@ const BADGES: Record<TableStatus, string> = {
 }
 const ICON = { size: 16, strokeWidth: 1.25, 'aria-hidden': true } as const  // lucide icons: thin, decorative
 const time = new Intl.DateTimeFormat('fr-DZ', { hour: '2-digit', minute: '2-digit' })
+const REPLAY_SPEED = 0.5
 const REFRESH_EVERY = 15_000  // séances opened by the waiters are not pushed to the desk: we also poll
 
 /** the camera reading of each table at a moment of the demo clip (the last change before that time). */
@@ -76,6 +77,8 @@ function CameraView({ camera, onReplayReadings }: {
   return (
     <figure className="cctv">
       <video ref={video} src={camera.replay_video} autoPlay muted loop playsInline
+        // the demo clip is a time-lapse: half speed looks like real life (the readings follow currentTime)
+        onLoadedMetadata={(e) => { e.currentTarget.playbackRate = REPLAY_SPEED }}
         aria-label={`Caméra ${camera.name}, séquence de démonstration floutée`}
         // the clip plays by itself; every time its position moves, we replay the readings recorded at that moment
         onTimeUpdate={() => timeline && video.current && onReplayReadings(readingsAt(timeline, video.current.currentTime))} />

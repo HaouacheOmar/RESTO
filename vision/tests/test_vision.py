@@ -217,3 +217,21 @@ def test_the_snapshot_needs_a_ticket_and_is_the_blurred_frame():
     assert client.get(f'/salle/snapshot.jpg?ticket={ticket}').content == b'blurred-jpeg'
     assert client.get('/salle/snapshot.jpg?ticket=forged').status_code == 403
     assert client.get(f'/terrasse/snapshot.jpg?ticket={ticket}').status_code == 403  # another camera
+
+
+def test_only_confident_people_outside_the_masks_get_corner_marks():
+    from resto_vision.detector import Detection
+    from resto_vision.overlay import draw_people
+    settings = Settings()
+    sure = Detection(np.array([10, 10, 60, 90], dtype=np.float32), 0.9, None)
+    doubtful = Detection(np.array([70, 10, 120, 90], dtype=np.float32), 0.2, None)
+    on_the_street = Detection(np.array([150, 10, 190, 90], dtype=np.float32), 0.9, None)
+    pipeline = Pipeline(settings, [], detector=FakeDetector(), tracker=FakeTracker([]))
+    street = [[[0.7, 0.0], [1.0, 0.0], [1.0, 1.0], [0.7, 1.0]]]
+    boxes = pipeline.marked([sure, doubtful, on_the_street], street, (100, 200, 3))
+    assert [list(b) for b in boxes] == [[10, 10, 60, 90]]
+
+    frame = np.zeros((100, 200, 3), dtype=np.uint8)
+    draw_people(frame, boxes)
+    assert frame[10:20, 10:20].any()  # a corner is drawn
+    assert not frame[45:55, 30:40].any()  # but not the middle of the box (corners only, no rectangle)

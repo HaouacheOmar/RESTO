@@ -57,6 +57,7 @@ services:
       RESTO_DEVICE_TOKEN: ${MONITORING_DEMO_TOKEN:-local-demo-token}
       MONITORING_STREAM_SECRET: ${MONITORING_STREAM_SECRET:-local-stream-secret}
       VIDEO_SOURCE: samples/restaurant.mp4  # a camera would be rtsp://...
+      VIDEO_SPEED: "0.5"  # the demo clip is a time-lapse: half speed looks like real life
       ANALYSIS_FPS: "2"  # on a cpu, counting twice a second leaves more power for a smooth video
       # the demo clip is a time-lapse: shorter delays than a real camera (4 s / 20 s)
       OCCUPIED_AFTER: "0.5"

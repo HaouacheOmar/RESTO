@@ -12,6 +12,7 @@ class Settings:
     # where the video comes from: a file path (demo) or a camera url like rtsp://user:pass@10.0.0.5/stream
     source: str = _env('VIDEO_SOURCE', 'samples/restaurant.mp4')
     loop: bool = _env('VIDEO_LOOP', '1') == '1'  # replay a file forever (demo); ignored for a camera
+    speed: float = float(_env('VIDEO_SPEED', '1'))  # file only: 0.5 plays it at half speed (the demo is a time-lapse)
 
     # the resto api, and this camera's secret token (from "manage.py monitoring_camera")
     api_url: str = _env('RESTO_API_URL', 'http://backend:8000').rstrip('/')

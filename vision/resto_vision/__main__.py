@@ -41,7 +41,7 @@ def run(settings):
     threading.Thread(target=server.run, daemon=True).start()
 
     pipeline = Pipeline(settings, zones, masks=config.get('privacy_masks', []))
-    source = FrameSource(settings.source, settings.loop)
+    source = FrameSource(settings.source, settings.loop, settings.speed)
 
     # the analysis thread: deepsort + counts + reports, on the newest detections, a few times per second
     handoff = {'item': None}  # the latest (frame, detections) from the display loop; older ones are dropped

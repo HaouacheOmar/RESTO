@@ -18,7 +18,7 @@ frame → YOLO26 pose (people + keypoints) → DeepSORT (same id frame to frame)
 | `resto_vision/privacy.py` | soft see-through blur on each person, stronger on the head, feathered edges; privacy masks; black frame on error |
 | `resto_vision/stream.py` | `/healthz`, `/metrics`, the blurred MJPEG stream and a blurred still image (HMAC ticket) |
 | `resto_vision/reporter.py` | camera config from the API, readings to the API (retries, heartbeat) |
-| `resto_vision/overlay.py` | draws each tabletop's outline in its status colour, a light fill and a rounded "T3  2/4" label |
+| `resto_vision/overlay.py` | draws each tabletop's outline in its status colour, a light fill and a rounded "T3  2/4" label; four rounded corner marks around each confident person (none inside privacy masks) |
 | `resto_vision/source.py` | reads the camera in its own thread, always keeps the newest frame (no growing delay) |
 | `resto_vision/pipeline.py` | display part (detect + blur, every frame) and analysis part (DeepSORT + counts, 5 per second) |
 

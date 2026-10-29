@@ -14,8 +14,8 @@ log = logging.getLogger(__name__)
 
 
 class FrameSource:
-    def __init__(self, source, loop=True):
-        self.source, self.loop = source, loop
+    def __init__(self, source, loop=True, speed=1.0):
+        self.source, self.loop, self.speed = source, loop, speed
         self.is_file = not source.lower().startswith(('rtsp://', 'http://', 'https://'))
         self.lock = threading.Lock()
         self.frame, self.number = None, 0  # the newest frame and its count (to know if it is new)
@@ -23,7 +23,7 @@ class FrameSource:
 
     def _read(self):
         capture = cv2.VideoCapture(self.source)
-        fps = capture.get(cv2.CAP_PROP_FPS) or 25
+        fps = (capture.get(cv2.CAP_PROP_FPS) or 25) * self.speed  # a file is shown at its own pace (times speed)
         started, played = time.monotonic(), 0
         while True:
             ok, frame = capture.read()

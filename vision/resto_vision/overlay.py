@@ -1,5 +1,8 @@
-"""draws each table on the (already blurred) video: its tabletop outlined in its status colour, a light
-see-through fill, and a small rounded label "T3  2/4" (table number, seated people / places)."""
+"""draws on the (already blurred) video:
+- each table: its tabletop outlined in its status colour, a light see-through fill, and a small rounded label
+  "T3  2/4" (table number, seated people / places);
+- each person: four soft rounded corners around them (lighter than a full rectangle, like a camera's focus marks).
+"""
 import cv2
 
 # the design system's colours, in opencv's bgr order (blue, green, red)
@@ -20,6 +23,31 @@ def _pill(frame, text, center_x, bottom_y, color, text_color):
     cv2.circle(frame, (left, top + radius), radius, color, -1, cv2.LINE_AA)
     cv2.circle(frame, (right, top + radius), radius, color, -1, cv2.LINE_AA)
     cv2.putText(frame, text, (left, top + radius + h // 2), FONT, 0.5, text_color, 1, cv2.LINE_AA)
+
+
+# corner (x, y) of the box, which way the marks go (dx, dy), and the quarter of circle that rounds it
+CORNERS = ((0, 1, 1, 1, 180), (2, 1, -1, 1, 270), (0, 3, 1, -1, 90), (2, 3, -1, -1, 0))
+
+
+def _corners(frame, box, color, thickness):
+    length = max(6, int(min(box[2] - box[0], box[3] - box[1]) * 0.22))  # each mark: 22% of the box's short side
+    radius = max(2, length // 3)  # the rounded part
+    for xi, yi, dx, dy, angle in CORNERS:
+        x, y = int(box[xi]), int(box[yi])
+        cx, cy = x + dx * radius, y + dy * radius  # centre of the rounded part
+        cv2.ellipse(frame, (cx, cy), (radius, radius), 0, angle, angle + 90, color, thickness, cv2.LINE_AA)
+        cv2.line(frame, (cx, y), (x + dx * length, y), color, thickness, cv2.LINE_AA)  # along the top or bottom
+        cv2.line(frame, (x, cy), (x, y + dy * length), color, thickness, cv2.LINE_AA)  # along the side
+
+
+def draw_people(frame, boxes):
+    """four rounded corner marks around each person: a thin dark shadow, then ivory on top (readable on light
+    and dark backgrounds)."""
+    for box in boxes:
+        _corners(frame, box, INK, 4)
+    for box in boxes:
+        _corners(frame, box, IVORY, 2)
+    return frame
 
 
 def draw_zones(frame, zones, states):

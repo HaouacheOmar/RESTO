@@ -14,7 +14,10 @@ import threading
 import time
 
 from .occupancy import OccupancyTracker
-from .overlay import draw_zones
+import cv2
+import numpy as np
+
+from .overlay import draw_people, draw_zones
 from .posture import Posture, anchor, posture
 from .privacy import blur_masks, blur_people, safe_frame
 from .zones import table_of
@@ -83,7 +86,22 @@ class Pipeline:
             states, zones, masks = dict(self.states), self.zones, self.masks
         output = blur_people(frame, [(d.box, d.keypoints) for d in detections] + recent)
         blur_masks(output, masks)
-        return draw_zones(output, zones, states)
+        draw_zones(output, zones, states)
+        return draw_people(output, self.marked(detections, masks, frame.shape))
+
+    def marked(self, detections, masks, shape):
+        """who gets corner marks: people the model is sure about (no marks on doubtful detections, which are
+        still blurred), and nobody inside a privacy mask (the street, the far end: nobody is followed there)."""
+        height, width = shape[:2]
+        areas = [np.array([[x * width, y * height] for x, y in m], dtype=np.float32) for m in masks]
+        boxes = []
+        for d in detections:
+            if d.confidence < self.settings.count_confidence:
+                continue
+            centre = (float(d.box[0] + d.box[2]) / 2, float(d.box[1] + d.box[3]) / 2)
+            if not any(cv2.pointPolygonTest(area, centre, False) >= 0 for area in areas):
+                boxes.append(d.box)
+        return boxes
 
     def display(self, frame):
         """returns (blurred frame, this frame's detections, stats). safe: a black frame if anything fails."""
