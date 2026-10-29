@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'service',     # dining: tables, reservations, Séances, orders, Additions, reviews
     'analytics',   # the manager's dashboard
     'realtime',    # live events over WebSockets
+    'monitoring',  # camera table monitoring (manager + reservation desk)
 ]
 
 MIDDLEWARE = [
@@ -216,7 +217,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'RESTO API',
-    'DESCRIPTION': 'Distributed restaurant management. Domain vocabulary: CONTEXT.md. '
+    'DESCRIPTION': 'Distributed restaurant management. Domain vocabulary: docs/CONTEXT.md. '
                    'Real-time events: ws://<host>/ws/?ticket=<single-use ticket from POST /api/realtime/ticket/>.',
     'VERSION': '1.0.0',
     'COMPONENT_SPLIT_REQUEST': True,
@@ -233,6 +234,13 @@ CHANNEL_LAYERS = {
 CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'} if TESTING else {
     'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': REDIS_URL,
     'OPTIONS': {'db': REDIS_DB}, 'KEY_PREFIX': 'resto'}}
+
+# table monitoring: readings older than this are ignored (the camera or its worker may be down).
+MONITORING_STALE_SECONDS = int(os.environ.get('MONITORING_STALE_SECONDS', '30'))
+# where the vision worker serves its blurred streams, and the secret shared with it to sign stream tickets.
+# empty on the public demo: no worker runs there, the screen plays a clip blurred in advance instead.
+MONITORING_STREAM_URL = os.environ.get('MONITORING_STREAM_URL', '').rstrip('/')
+MONITORING_STREAM_SECRET = os.environ.get('MONITORING_STREAM_SECRET', '')
 
 # Note: fixed 2h slot per reservation; add a per-reservation duration if needed
 RESERVATION_SLOT = timedelta(hours=2)

@@ -1,0 +1,7 @@
+.venv
+__pycache__
+.pytest_cache
+*.pt
+samples/*.jpg
+samples/demo-raw.mp4
+tests

@@ -1,0 +1,95 @@
+# Production on one Linux server (an Icosnet VM or any host). Guide: docs/DEPLOIEMENT.md
+#   cd docker
+#   cp .env.prod.example .env   # then fill it in
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser   # the first manager
+# Differences with docker-compose.yml (the local stack, unchanged): HTTPS (Caddy), no demo data, required secrets,
+# only ports 80/443 open, restart after a crash or a reboot, daily backups. The vision workers run in the
+# restaurants, not here.
+name: resto
+x-always: &always
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *always
+    image: postgres:17
+    environment:
+      POSTGRES_DB: resto
+      POSTGRES_USER: resto
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resto"]
+      interval: 5s
+      retries: 20
+
+  redis:
+    <<: *always
+    image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+
+  backend:
+    <<: *always
+    build: ../server
+    env_file: .env  # email, sentry... (everything in .env)
+    environment:
+      DEBUG: "0"
+      SEED_DEMO: "0"  # never the demo accounts (their password is public)
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      ALLOWED_HOSTS: ${DOMAIN:?set DOMAIN in .env},localhost
+      CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
+      FRONTEND_URL: https://${DOMAIN}
+      NUM_PROXIES: "2"  # caddy, then nginx
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      MONITORING_STREAM_URL: /stream
+      MONITORING_STREAM_SECRET: ${MONITORING_STREAM_SECRET:?set MONITORING_STREAM_SECRET in .env}
+    volumes: [media:/app/media]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  web:
+    <<: *always
+    build: ../client
+    depends_on: [backend]
+
+  caddy:
+    <<: *always
+    image: caddy:2
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data  # the certificates
+      - caddy_config:/config
+    depends_on: [web]
+
+  backup:
+    <<: *always
+    image: postgres:17
+    environment:
+      PGHOST: postgres
+      PGUSER: resto
+      PGDATABASE: resto
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      KEEP_DAYS: ${KEEP_DAYS:-14}
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - ./backups:/backups
+      - media:/media:ro
+    entrypoint: ["sh", "/backup.sh"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  media:
+  caddy_data:
+  caddy_config:

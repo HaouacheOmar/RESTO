@@ -1,6 +1,6 @@
 # Schéma de base de données (PostgreSQL)
 
-La source de vérité est l'ensemble des modèles Django (`server/*/models.py`) et de leurs migrations. Pour obtenir le SQL exact : `python manage.py sqlmigrate <app> 0001`. Le vocabulaire est défini dans [`CONTEXT.md`](../CONTEXT.md).
+La source de vérité est l'ensemble des modèles Django (`server/*/models.py`) et de leurs migrations. Pour obtenir le SQL exact : `python manage.py sqlmigrate <app> 0001`. Le vocabulaire est défini dans [`CONTEXT.md`](CONTEXT.md).
 
 Conventions : clé primaire `id` en `bigint` auto-incrémenté ; les choix (énumérations) sont stockés en `varchar` ; les dates sont `timestamptz` (UTC).
 

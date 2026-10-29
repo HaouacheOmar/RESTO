@@ -1,11 +1,25 @@
 """What the other modules may use from service (dining: tables, reservations, Séances, orders, Additions, reviews)."""
-from django.db.models import Avg, Count, IntegerField, OuterRef, Subquery, Sum
+from django.db.models import Avg, Count, Exists, IntegerField, OuterRef, Subquery, Sum
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 
 from .models import Addition, Order, OrderItem, Reservation, RestaurantTable, Review, Seance
 
 __all__ = ['Addition', 'Order', 'OrderItem', 'Reservation', 'RestaurantTable', 'Review', 'Seance',
-           'daily_special_stats']
+           'daily_special_stats', 'tables_with_state']
+
+
+def tables_with_state():
+    """Every table with its live state, computed (never stored): `is_occupied` (an open Séance) and
+    `reserved_at` (a reservation not yet seated holds it now, so no walk-in), plus `seance_name`."""
+    now = timezone.now()
+    blocking = Reservation.blocking_walk_ins(now).filter(table=OuterRef('pk')).order_by('reservation_time')
+    open_seance = Seance.objects.filter(table=OuterRef('pk'), status=Seance.Status.OPEN)
+    return RestaurantTable.objects.annotate(
+        is_occupied=Exists(open_seance),
+        reserved_at=Subquery(blocking.values('reservation_time')[:1]),
+        seance_name=Subquery(open_seance.values('name')[:1]),
+    )
 
 
 def daily_special_stats():

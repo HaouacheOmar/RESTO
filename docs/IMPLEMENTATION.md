@@ -1,6 +1,6 @@
 # Architecture et implémentation technique
 
-> Le vocabulaire métier est défini dans [`CONTEXT.md`](../CONTEXT.md), et les besoins dans [`PRD.md`](PRD.md).
+> Le vocabulaire métier est défini dans [`CONTEXT.md`](CONTEXT.md), et les besoins dans [`PRD.md`](PRD.md).
 
 ## 1. Stack
 
@@ -14,7 +14,7 @@
 | Back-office | Django admin (tous les modèles) |
 | Frontend | À venir (`client/`) |
 
-Tout se lance avec `docker compose up --build` à la racine (`docker-compose.yml`) : PostgreSQL, Redis, le backend (Daphne) et le frontend React servi par nginx sur **http://localhost:8088**. nginx sert l'application et relaie `/api`, `/admin`, `/static`, `/media` et `/ws` vers Django : tout est sur la même origine. En développement, PostgreSQL et Redis seuls (`docker compose up -d postgres redis`, ports hôte 5434 et 6380) et Django dans le `venv/` à la racine.
+Tout se lance avec `docker compose -f docker/docker-compose.yml up --build` depuis la racine (les fichiers Docker Compose sont dans `docker/`) : PostgreSQL, Redis, le backend (Daphne) et le frontend React servi par nginx sur **http://localhost:8088**. nginx sert l'application et relaie `/api`, `/admin`, `/static`, `/media` et `/ws` vers Django : tout est sur la même origine. En développement, PostgreSQL et Redis seuls (`docker compose -f docker/docker-compose.yml up -d postgres redis`, ports hôte 5434 et 6380) et Django dans le `venv/` à la racine. Pour un vrai restaurant : `docker/docker-compose.prod.yml` (HTTPS, sans données de démo, secrets obligatoires, sauvegardes), voir [DEPLOIEMENT.md](DEPLOIEMENT.md).
 
 ---
 
@@ -166,10 +166,10 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 ## 8. Lancer et tester (depuis `server/`)
 
 ```bash
-docker compose up --build                              # depuis la racine : toute la pile sur http://localhost:8088
+docker compose -f docker/docker-compose.yml up --build    # depuis la racine : toute la pile sur http://localhost:8088
 
 # ou, pour développer le backend :
-docker compose up -d postgres redis
+docker compose -f docker/docker-compose.yml up -d postgres redis
 ../venv/Scripts/python.exe -m pip install -r requirements.txt
 ../venv/Scripts/python.exe manage.py migrate
 ../venv/Scripts/python.exe manage.py seed_demo         # restaurant de démo ; ne crée que ce qui manque (relancé à chaque démarrage Docker sans écraser les modifications)
@@ -211,5 +211,44 @@ Les écrans qui reçoivent sont ouverts avant l'action : ce qui y apparaît sans
 - **Erreurs** : Sentry, actif seulement si `SENTRY_DSN` (API) ou `VITE_SENTRY_DSN` (build du frontend) est défini ; aucune donnée personnelle envoyée. Sans DSN au build, le code Sentry n'est même pas inclus.
 - **En-têtes du frontend** (`client/vercel.json`) : Content-Security-Policy (scripts du site seulement ; images Unsplash et Supabase ; polices Google ; WebSocket vers l'API ; Sentry), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
 
-## 9. Évolutions prévues
+## 9. Surveillance des tables (`monitoring/` + `vision/`)
+
+Réservée au **gérant** et au **responsable des réservations**. Un module de plus, qui **lit** le cœur sans jamais le modifier : une Séance ou une réservation ne change que par ses actions habituelles. Si une caméra tombe, le restaurant fonctionne exactement comme avant (`monitoring/api.py` n'expose rien : aucun module ne dépend des caméras).
+
+**Chaîne de traitement** (le *vision worker*, un service à part dans `vision/`, sur le lieu de la caméra) :
+
+1. **Détection** : YOLO26 pose (`yolo26n-pose`) trouve chaque personne et ses 17 points du corps.
+2. **Suivi** : DeepSORT garde le même identifiant à une personne d'une image à l'autre (filtre de Kalman + apparence MobileNet), pour qu'une personne cachée un instant ne fasse pas varier le compte.
+3. **Assis ou debout** : genoux presque à hauteur des hanches = assis ; jambes cachées sous la table = forme de la boîte. Seules les personnes assises comptent (un serveur debout à côté d'une table n'est pas un client).
+4. **Table** : le point entre les hanches est dans le polygone de la table (fractions de l'image, configuré sur le serveur).
+5. **Lissage** : médiane des comptes sur quelques secondes, puis attente avant de changer d'état (4 s pour « occupée », 20 s pour « vide » : un client peut s'absenter).
+6. **Floutage** : un flou doux et transparent en forme de personne (ellipse aux bords fondus) : léger sur le corps, on devine une silhouette ; fort sur la tête, aucun visage n'est reconnaissable. Toute personne détectée (seuil bas, 10 %) ou seulement prédite par le suivi est floutée avant que l'image ne quitte le worker, plus des **masques de confidentialité** toujours floutés (fond de salle, passage, vitrine sur la rue). En cas d'erreur, une image noire, jamais l'image brute. Sur la vidéo, chaque table est dessinée par le contour de son plateau (vert libre, or occupée) avec une étiquette « T3 2/4 » ; chaque personne détectée avec assurance est marquée par quatre coins arrondis (pas de rectangle), sauf dans les masques.
+7. **Fluidité** : trois fils d'exécution. Le lecteur garde toujours l'image la plus récente de la caméra ; l'affichage (détection YOLO + flou + diffusion) tourne aussi vite que le processeur le permet (jusqu'à 25 images/s) et ne dépend jamais du suivi ; l'analyse (DeepSORT, comptage, envoi) tourne à son rythme (5 fois/s), sur les dernières détections.
+8. **Envoi** : `{table, personnes, occupée, depuis}` à l'API toutes les 3 s (et à chaque changement). Le flux vidéo flouté (MJPEG) n'est servi qu'avec un ticket signé.
+
+**Côté API** :
+
+| Endpoint | Accès | Rôle |
+| :--- | :--- | :--- |
+| `GET monitoring/tables/` | gérant, responsable | Chaque table : l'état du cœur (`is_occupied`, `reserved_at`, `seance_name`) et, si la lecture a moins de 30 s, ce que voit la caméra (`people`, `occupied`) |
+| `GET monitoring/cameras/` | gérant, responsable | Caméras, en ligne ou non, flux en direct possible ou séquence de démonstration |
+| `POST monitoring/cameras/{slug}/stream/` | gérant, responsable | URL du flux flouté, signée HMAC, valable 60 s (le worker vérifie la signature avec le secret partagé `MONITORING_STREAM_SECRET`) |
+| `GET monitoring/device/config/`, `POST monitoring/device/observations/` | worker (`Authorization: Device <jeton>`) | Zones et masques de la caméra ; envoi des lectures. Seule l'empreinte SHA-256 du jeton est stockée |
+| `GET`/`POST monitoring/setup/cameras/` | gérant | Toutes les caméras avec leurs zones et masques (3 requêtes quel que soit leur nombre) ; ajout d'une caméra (le jeton n'apparaît qu'une fois, dans la réponse) |
+| `PATCH`/`DELETE monitoring/setup/cameras/{slug}/` | gérant | Nom, zone, activation, masques ; `zones` remplace toutes les tables de la caméra d'un coup |
+| `POST monitoring/setup/cameras/{slug}/token/` | gérant | Nouveau jeton, l'ancien cesse de marcher |
+
+Une lecture écrase la précédente (une ligne par table, **aucun historique**). L'envoi d'un lot coûte 7 requêtes quel que soit le nombre de tables (pas de N+1 : une lecture des anciennes valeurs, un `bulk_create` en *upsert*), vérifié par un test. Un changement est poussé en direct (`monitoring_update`, groupe `reservations`, que rejoint aussi le gérant).
+
+**Plusieurs caméras** (plusieurs zones, grande salle) : chaque caméra couvre une **zone** du restaurant que le gérant nomme librement : « Salle VIP », « Salle front de mer », « Terrasse » (`Camera.area`) ; elle a ses zones de tables et son propre worker. Une table n'est suivie que par **une** caméra (`TableZone.table` est unique ; l'API refuse une table déjà prise en nommant sa caméra) : là où deux champs se recouvrent, personne n'est compté deux fois. L'onglet Surveillance filtre par zone puis par caméra ; `monitoring/tables/` indique `camera_slug` pour chaque table.
+
+**Configuration** (onglet **Caméras** du gérant) : ajouter une caméra (nom, identifiant, zone) donne son jeton, à copier dans le worker. Sur une image fixe floutée de la caméra (`/stream/<slug>/snapshot.jpg`, même ticket signé que le flux ; sinon la séquence de démonstration), le gérant clique les coins de chaque zone de comptage (la table et ses chaises), du plateau (pour le dessin) et des masques de confidentialité. Les coordonnées sont enregistrées en fractions de l'image. Le worker relit sa configuration chaque minute (`CONFIG_EVERY`) : un changement s'applique sans redémarrage. `manage.py monitoring_camera` reste disponible pour une installation scriptée.
+
+**Couleur d'une table** (le cœur décide toujours en premier) : Séance ouverte → **Occupée** (encre, avec le nombre vu par la caméra) ; réservation en cours → **Réservée** (crème et or), ou **Clients arrivés ?** si la caméra voit des personnes assises (à installer au check-in) ; sinon personnes assises sans Séance → **Sans séance** (danger : quelqu'un doit s'en occuper) ; sinon **Libre**. Une table de 3 avec 2 clients est occupée : la place libre n'est pas proposée.
+
+**Déploiement** : `--profile vision` lance le worker (image CPU, environ 8 images/s ; avec `-f docker/docker-compose.gpu.yml`, PyTorch CUDA sur une carte NVIDIA, environ 25 images/s ; modèle et clip de démonstration téléchargés à la construction et vérifiés par SHA-256 ; utilisateur non root ; `/healthz` et `/metrics`). Un worker par caméra, nommé `vision-<slug>` : nginx envoie `/stream/<slug>/…` vers `http://vision-<slug>:8090` (le service de démo s'appelle `vision-salle` ; une zone de plus = une copie de ce service avec son `VIDEO_SOURCE` et son jeton). Une caméra réelle : `VIDEO_SOURCE=rtsp://…`, `DEVICE=cuda:0` pour un GPU, zones et masques dessinés dans l'onglet Caméras. Le clip de démonstration est un time-lapse : le worker le joue à demi-vitesse (`VIDEO_SPEED=0.5`). Sur la démo publique (Vercel + Render), aucun modèle ne tourne : l'onglet Surveillance l'annonce (« Modèle non supporté sur la version en ligne ») et garde le plan des tables ; la démonstration complète se fait en direct, avec un worker sur GPU. `client/public/monitoring/demo.mp4` (flouté à l'avance par `python -m resto_vision render`) sert encore de fond à l'éditeur de zones quand la caméra n'a pas de worker.
+
+**Confidentialité** : la salle est déclarée sous vidéosurveillance (pied de page du site, formulaire de réservation), conformément à la loi 18-07 ; aucune image n'est enregistrée, aucune reconnaissance faciale, seuls des nombres sortent du worker.
+
+## 10. Évolutions prévues
 Flux cuisine pour le Chef, Addition partagée.

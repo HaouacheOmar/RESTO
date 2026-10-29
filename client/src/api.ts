@@ -55,15 +55,24 @@ const ENDPOINTS = {
   users: '/api/users/',
   additions: '/api/additions/',
   reviews: '/api/reviews/',
+  // table monitoring (manager and reservation desk only)
+  monitoringTables: '/api/monitoring/tables/',
+  monitoringCameras: '/api/monitoring/cameras/',
+  monitoringStream: (slug: string) => `/api/monitoring/cameras/${slug}/stream/`,
+  // camera setup (manager only)
+  cameraSetups: '/api/monitoring/setup/cameras/',
+  cameraSetup: (slug: string) => `/api/monitoring/setup/cameras/${slug}/`,
+  cameraToken: (slug: string) => `/api/monitoring/setup/cameras/${slug}/token/`,
   realtime: '/ws/',
 } as const
 
 type Endpoint = Exclude<keyof typeof ENDPOINTS, 'realtime'>
 export type Query = Record<string, string | number | boolean>
 
-const pathOf = (endpoint: Endpoint, id?: number, query?: Query) => {
+const pathOf = (endpoint: Endpoint, id?: number | string, query?: Query) => {
   const path = ENDPOINTS[endpoint]
-  const url = typeof path === 'function' ? path(id as number) : path
+  // an id is a number, except a camera, which is named by its slug
+  const url = typeof path === 'function' ? (path as (id: number | string) => string)(id as number | string) : path
   if (!query) return url
   return `${url}?${new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)]))}`
 }
@@ -152,7 +161,7 @@ export function errorText(error: unknown, fallback: string) {
 
 interface RequestOptions {
   /** For endpoints about one object, e.g. `api('orderCancel', { id: 4, method: 'POST' })`. */
-  id?: number
+  id?: number | string
   query?: Query
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
@@ -449,3 +458,44 @@ const dateTime = new Intl.DateTimeFormat('fr-DZ', { weekday: 'long', day: 'numer
 const dateOnly = new Intl.DateTimeFormat('fr-DZ', { day: 'numeric', month: 'long', year: 'numeric' })
 export const formatDateTime = (iso: string) => dateTime.format(new Date(iso))
 export const formatDate = (iso: string) => dateOnly.format(new Date(iso))
+
+// ---------------------------------------------------------------------------------------------
+// table monitoring
+// ---------------------------------------------------------------------------------------------
+/** what the camera sees at a table (null when there is no recent reading). */
+export interface CameraReading { people: number; occupied: boolean; since?: string; observed_at?: string }
+
+/** one table: the core's facts (séance, reservation) and, if it is in a camera's view, the camera's reading. */
+export interface MonitoredTable {
+  number: number
+  capacity: number
+  zone: 'STANDARD' | 'VIP'
+  is_occupied: boolean
+  seance_name: string | null
+  reserved_at: string | null
+  watched: boolean
+  camera_slug: string | null  // the camera that watches it (a restaurant can have several)
+  camera: CameraReading | null
+}
+
+export interface MonitoringCamera {
+  slug: string
+  name: string
+  area: string  // the zone of the restaurant it covers, named by the manager ("Salle VIP"...)
+  online: boolean
+  live: boolean
+  replay_video: string
+  replay_timeline: string
+}
+
+/** a point on the camera image, in fractions of its width and height (0 to 1). */
+export type Point = [number, number]
+
+/** a camera as the manager sets it up: where it is, the tables drawn on its image, the privacy masks. */
+export interface CameraSetup extends MonitoringCamera {
+  is_active: boolean
+  last_seen_at: string | null
+  privacy_masks: Point[][]
+  zones: { table_number: number; polygon: Point[]; outline: Point[] }[]
+  token?: string  // only right after the camera is created
+}

@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * End-to-end journeys across the real role spaces. By default against the Docker stack (`docker compose up`,
+ * End-to-end journeys across the real role spaces. By default against the Docker stack (`docker compose -f docker/docker-compose.yml up`,
  * http://localhost:8088); BASE_URL points them at any other environment (a staging deployment).
  * They create their own data (a new client account, orders), so never point them at production.
  */

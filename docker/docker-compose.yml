@@ -1,0 +1,71 @@
+# Whole stack (from the repo root): docker compose -f docker/docker-compose.yml up --build  →  http://localhost:8088
+name: resto  # same project name as before the move to docker/: keeps the containers and the local database
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: resto
+      POSTGRES_USER: resto
+      POSTGRES_PASSWORD: resto
+    ports: ["5434:5432"]  # also used when running Django outside Docker
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resto"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    ports: ["6380:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+  backend:
+    build: ../server
+    environment:
+      DEBUG: "1"  # local stack over plain HTTP; production settings are in server/.env.example
+      SECRET_KEY: local-docker-secret
+      ALLOWED_HOSTS: localhost,127.0.0.1,backend
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_SCALE: ${RATE_LIMIT_SCALE:-1}  # the end-to-end tests raise it
+      # table monitoring: local-only values; the worker below shares them
+      MONITORING_STREAM_URL: /stream
+      MONITORING_STREAM_SECRET: ${MONITORING_STREAM_SECRET:-local-stream-secret}
+      MONITORING_DEMO_TOKEN: ${MONITORING_DEMO_TOKEN:-local-demo-token}
+    volumes: [media:/app/media]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  web:
+    build: ../client
+    ports: ["8088:80"]
+    depends_on: [backend]
+
+  # the vision worker (yolo pose + deepsort): only with `--profile vision`.
+  # one worker per camera, named vision-<camera slug> (nginx finds it by that name). another zone:
+  # copy this service as vision-vip with its own VIDEO_SOURCE and the token shown in the manager's
+  # "Caméras" page.
+  vision-salle:
+    build: ../vision
+    profiles: [vision]
+    environment:
+      RESTO_API_URL: http://backend:8000
+      RESTO_DEVICE_TOKEN: ${MONITORING_DEMO_TOKEN:-local-demo-token}
+      MONITORING_STREAM_SECRET: ${MONITORING_STREAM_SECRET:-local-stream-secret}
+      VIDEO_SOURCE: samples/restaurant.mp4  # a camera would be rtsp://...
+      VIDEO_SPEED: "0.5"  # the demo clip is a time-lapse: half speed looks like real life
+      ANALYSIS_FPS: "2"  # on a cpu, counting twice a second leaves more power for a smooth video
+      # the demo clip is a time-lapse: shorter delays than a real camera (4 s / 20 s)
+      OCCUPIED_AFTER: "0.5"
+      EMPTY_AFTER: "1.5"
+      COUNT_WINDOW: "1"
+    depends_on: [backend]
+
+volumes:
+  pgdata:
+  media:

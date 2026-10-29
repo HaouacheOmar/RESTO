@@ -40,6 +40,21 @@ jobs:
       - run: python manage.py spectacular --validate --fail-on-warn --file /dev/null
       - run: python manage.py test
 
+  # the vision worker's logic (posture, zones, smoothing, blur, tickets). no model or pytorch needed:
+  # the tests replace yolo and deepsort with fakes, so this job stays light and fast.
+  vision:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vision
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install numpy==2.5.4 opencv-python-headless==5.0.0.93 fastapi==0.162.0 httpx==0.28.1 pytest==9.2.0
+      - run: python -m pytest -q tests
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -64,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Start the stack
-        run: docker compose up -d --build
+        run: docker compose -f docker/docker-compose.yml up -d --build
         env:
           RATE_LIMIT_SCALE: "100"  # one IP plays all nine roles
       - name: Wait until it answers
@@ -80,7 +95,7 @@ jobs:
         working-directory: e2e
       - name: API logs
         if: failure()
-        run: docker compose logs backend --tail 200
+        run: docker compose -f docker/docker-compose.yml logs backend --tail 200
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

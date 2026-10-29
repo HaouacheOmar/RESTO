@@ -1,0 +1,105 @@
+/* table monitoring (docs/SYSTEM_DESIGN.md): the blurred camera on one side, the drawn table map on the other.
+   tokens only, square-ish shapes, the palette of the floor plan: occupied = ink, reserved = cream + gold. */
+.monitoring { display: grid; gap: var(--space-8); }
+@media (min-width: 1024px) { .monitoring { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); align-items: start; } }
+
+/* the camera picture: an ink frame, like a dark section */
+.cctv { margin: 0; background: var(--color-ink); border-radius: var(--radius-sm); overflow: hidden; }
+.cctv img, .cctv video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--color-ink); }
+.cctv figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4); color: var(--color-on-dark-muted); font-size: var(--text-sm); }
+.cctv-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px 10px; border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-dark); color: var(--color-champagne);
+  font-family: var(--font-display-sc); font-size: var(--text-xs); letter-spacing: 0.18em; }
+.cctv-badge.is-live { color: var(--color-on-dark); background: var(--color-success); border-color: var(--color-success); }  /* live = success (design system) */
+.cctv-empty { display: grid; place-items: center; aspect-ratio: 16 / 9; margin: 0; background: var(--color-ink);
+  color: var(--color-on-dark-muted); }
+.cctv-notice { gap: var(--space-2); align-content: center; padding: var(--space-8); text-align: center; border-radius: var(--radius-sm); }
+.cctv-notice p { margin: 0; max-width: 46ch; font-size: var(--text-sm); }
+.cctv-notice strong { color: var(--color-on-dark); font-family: var(--font-display); font-size: var(--text-lg); font-weight: 400; }
+.cctv-notice svg { width: 28px; height: 28px; color: var(--color-champagne); }
+.privacy-note { display: flex; gap: var(--space-2); align-items: flex-start; margin: var(--space-3) 0 0;
+  color: var(--color-text-muted); font-size: var(--text-sm); }
+.privacy-note svg { flex: none; margin-top: 3px; color: var(--color-gold); }
+.monitoring .desk-section-title svg { color: var(--color-gold); vertical-align: -2px; }
+
+/* status: the floor plan's palette, plus danger only where someone must act (people seated without a séance) */
+:is(.mt-table, .mt-legend li) { --table-fill: #fff; --table-edge: var(--color-border); --table-ink: var(--color-text); --seat: var(--color-text-muted); }
+:is(.mt-table, .mt-legend li).is-occupied { --table-fill: var(--color-ink); --table-edge: var(--color-ink); --table-ink: var(--color-on-dark); --seat: var(--color-ink); }
+:is(.mt-table, .mt-legend li):is(.is-reserved, .is-arrived) { --table-fill: var(--color-cream); --table-edge: var(--color-gold); --seat: var(--color-gold); }
+.mt-table.is-arrived { border-color: var(--color-gold); }
+.mt-table.is-unserved { border-color: var(--color-danger); }
+:is(.mt-table, .mt-legend li).is-unserved { --table-edge: var(--color-danger); --seat: var(--color-danger); }
+:is(.mt-table, .mt-legend li).is-free { --seat: var(--color-success); }
+
+/* legend: a small swatch + the same words as the badges (never colour alone) */
+.mt-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); margin: 0 0 var(--space-6); padding: 0;
+  list-style: none; font-size: var(--text-sm); color: var(--color-text-muted); }
+.mt-legend li::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: var(--space-2);
+  border: 2px solid var(--table-edge); background: var(--table-fill); border-radius: var(--radius-sm); vertical-align: -1px; }
+
+/* the tables, drawn from above, inside standard cards */
+.mt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-4);
+  margin: 0 0 var(--space-8); padding: 0; list-style: none; }
+
+.mt-table .card-head h3 { font-size: var(--text-lg); }
+.mt-drawing { display: grid; justify-items: center; gap: var(--space-2); margin: var(--space-3) 0 var(--space-2); }
+.mt-chairs { display: flex; gap: var(--space-2); min-height: 12px; }
+.mt-chairs span { width: 12px; height: 12px; border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: #fff; }
+.mt-chairs span.is-taken { border-color: var(--seat); background: var(--seat); }
+.mt-top { display: grid; place-items: center; width: 100%; max-width: 120px; height: 44px; border-radius: var(--radius-sm);
+  background: var(--table-fill); border: 1px solid var(--table-edge); color: var(--table-ink);
+  font-family: var(--font-display); font-size: var(--text-lg); }
+.mt-count { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+.mt-count strong { color: var(--color-text); font-size: var(--text-lg); font-weight: 600; }
+
+.mt-camera { margin: var(--space-1) 0 0; color: var(--color-text-muted); font-size: var(--text-xs); }
+
+/* zones and cameras: small pill toggles above the picture */
+.mt-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+.mt-filters button { min-height: 36px; padding: 0 var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-pill);
+  background: #fff; color: var(--color-text); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.mt-filters button:hover { border-color: var(--color-stone); }
+.mt-filters button[aria-pressed='true'] { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-on-dark); }
+.mt-filters button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .mt-table, .mt-top, .mt-chairs span {
+    transition: background-color var(--duration-base) var(--ease-out), border-color var(--duration-base) var(--ease-out);
+  }
+}
+
+/* the manager's camera setup: the list, the one-time token, the drawing board */
+.cam-setup { display: grid; gap: var(--space-12); }
+.cam-setup > * { min-width: 0; }
+.cam-token { margin-bottom: var(--space-6); border-color: var(--color-gold); }
+.cam-token h3 svg { color: var(--color-gold); vertical-align: -2px; }
+.cam-token code { display: block; margin: var(--space-3) 0; padding: var(--space-3); overflow-wrap: anywhere;
+  background: var(--color-cream); border-radius: var(--radius-sm); font-size: var(--text-sm); }
+
+.cam-layout { display: grid; gap: var(--space-6); }
+@media (min-width: 1024px) { .cam-layout { grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); align-items: start; } }
+.cam-tools { display: grid; gap: var(--space-4); align-content: start; }
+
+/* the camera image with the drawing on top (same 16:9 frame as the live view) */
+.cam-canvas { position: relative; aspect-ratio: 16 / 9; background: var(--color-ink); border-radius: var(--radius-sm); overflow: hidden; }
+.cam-canvas :is(img, video) { display: block; width: 100%; height: 100%; object-fit: fill; }
+.cam-empty { display: grid; place-items: end center; height: 100%; margin: 0; padding: var(--space-6); text-align: center;
+  color: var(--color-on-dark-muted); font-size: var(--text-sm);
+  background-image: linear-gradient(var(--color-border-dark) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-dark) 1px, transparent 1px);
+  background-size: 10% 10%; }
+.cam-canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+.cam-canvas polygon, .cam-canvas polyline { vector-effect: non-scaling-stroke; stroke-width: 2; stroke-linejoin: round; }
+.cam-zone { fill: rgb(212 166 74 / 0.12); stroke: var(--color-champagne); stroke-dasharray: 6 4; }
+.cam-outline { fill: rgb(212 166 74 / 0.28); stroke: var(--color-champagne); }
+.cam-mask { fill: rgb(28 25 23 / 0.55); stroke: var(--color-on-dark-muted); stroke-dasharray: 2 4; }
+.cam-draft { fill: none; stroke: var(--color-on-dark); }
+.cam-label, .cam-dot { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
+.cam-label { padding: 2px 10px; border-radius: var(--radius-pill); background: var(--color-champagne); color: var(--color-ink);
+  font-size: var(--text-xs); font-weight: 600; }
+.cam-dot { width: 10px; height: 10px; border-radius: var(--radius-pill); background: var(--color-on-dark); border: 2px solid var(--color-ink); }
+
+.cam-shapes { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+.cam-shapes li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.cam-shapes .btn-link { margin-left: auto; }
+.cam-setup .row-actions { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }

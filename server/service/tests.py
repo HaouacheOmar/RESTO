@@ -518,6 +518,13 @@ class SeedDemoTests(APITestCase):
         self.assertEqual(Dish.objects.get(name='Bourek').price, Decimal('450'))
         self.assertTrue(User.objects.get(username='chef').check_password('changed-by-chef'))
 
+    def test_createsuperuser_makes_the_first_manager(self):
+        # production has no demo accounts: the restaurant's manager comes from `createsuperuser`
+        User.objects.create_superuser('patron', 'patron@resto.dz', 'a-long-secret-2026')
+        token = self.client.post('/api/auth/token/', {'username': 'patron', 'password': 'a-long-secret-2026'}).json()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token["access"]}')
+        self.assertEqual(self.client.get('/api/dashboard/').status_code, 200)
+
 
 class RealtimeTests(APITransactionTestCase):
     """Channels closes "old" DB connections around consumer calls, which breaks TestCase's wrapping transaction."""

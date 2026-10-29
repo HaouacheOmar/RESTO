@@ -121,6 +121,7 @@ export function BookingForm({ onBooked }: { onBooked: (reservation: Reservation)
         <span>Je viens en voiture <span className="muted">— nous vous gardons une place si possible</span></span>
       </label>
 
+      <p className="field-hint">La salle est placée sous vidéosurveillance pour le suivi des tables : les personnes sont floutées à la source et aucune image n’est enregistrée.</p>
       <button className="btn btn-ink" type="submit" disabled={pending}>{pending ? 'Envoi…' : 'Demander cette table'}</button>
     </form>
   )

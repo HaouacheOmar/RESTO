@@ -1,5 +1,12 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+
+
+class StaffManager(UserManager):
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        # `createsuperuser` makes the restaurant's first manager (production has no demo accounts).
+        extra_fields.setdefault('role', User.Role.ADMIN_MANAGER)
+        return super().create_superuser(username, email, password, **extra_fields)
 
 
 class User(AbstractUser):
@@ -23,6 +30,8 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     # Only meaningful for deliverers.
     availability = models.CharField(max_length=10, choices=Availability.choices, default=Availability.AVAILABLE)
+
+    objects = StaffManager()
 
 
 class JobApplication(models.Model):

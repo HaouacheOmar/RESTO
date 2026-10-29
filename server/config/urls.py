@@ -43,6 +43,7 @@ urlpatterns = [
     path('api/dashboard/', analytics.DashboardView.as_view()),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema')),
+    path('api/monitoring/', include('monitoring.urls')),
     path('api/', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

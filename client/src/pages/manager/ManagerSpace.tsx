@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 
 import { useApi, type Dashboard as Stats, type User } from '../../api'
 import { rise } from '../../motion'
@@ -15,7 +15,11 @@ import Settings from './Settings'
 import Team from './Team'
 import './manager.css'
 
-const TAB_IDS = ['tableau-de-bord', 'equipe', 'carte', 'reapprovisionnement', 'reglages'] as const
+// the camera panel is loaded only when its tab is opened
+const MonitoringPanel = lazy(() => import('../monitoring/MonitoringPanel'))
+const CameraSetup = lazy(() => import('../monitoring/CameraSetup'))
+
+const TAB_IDS = ['tableau-de-bord', 'surveillance', 'cameras', 'equipe', 'carte', 'reapprovisionnement', 'reglages'] as const
 
 /** Only what calls for the manager's attention pops up; everything else goes to the live feed. */
 const NOTIFICATIONS: Notifications = {
@@ -41,6 +45,8 @@ export default function ManagerSpace({ user }: { user: User }) {
 
       <Tabs tabs={[
         { id: 'tableau-de-bord', label: 'Tableau de bord' },
+        { id: 'surveillance', label: 'Surveillance' },
+        { id: 'cameras', label: 'Caméras' },
         { id: 'equipe', label: 'Équipe' },
         { id: 'carte', label: 'Carte' },
         { id: 'reapprovisionnement', label: 'Réapprovisionnement', count: stats.data?.pending_stock_requests },
@@ -49,6 +55,8 @@ export default function ManagerSpace({ user }: { user: User }) {
         {tab === 'tableau-de-bord' && (stats.data
           ? <Dashboard stats={stats.data} today={today} status={status} events={events} />
           : <Loading failed={stats.failed} />)}
+        {tab === 'surveillance' && <Suspense fallback={<Loading failed={false} />}><MonitoringPanel /></Suspense>}
+        {tab === 'cameras' && <Suspense fallback={<Loading failed={false} />}><CameraSetup /></Suspense>}
         {tab === 'equipe' && <Team />}
         {tab === 'carte' && <Carte />}
         {tab === 'reapprovisionnement' && <Restock onChange={refresh} />}
