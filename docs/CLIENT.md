@@ -1,6 +1,6 @@
 # RESTO — client
 
-React + TypeScript (Vite) frontend. Design rules: [`../docs/SYSTEM_DESIGN.md`](../docs/SYSTEM_DESIGN.md).
+React + TypeScript (Vite) frontend. Design rules: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md).
 
 ```bash
 npm install

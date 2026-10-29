@@ -1,6 +1,6 @@
 #!/bin/sh
 # Daily backup: the database (pg_dump custom format) and the uploaded photos (media).
-# Files land in ./backups on the server; copy that folder off the server too (see docs/DEPLOIEMENT.md).
+# Files land in docker/backups on the server; copy that folder off the server too (see docs/DEPLOIEMENT.md).
 # Restore: docs/DEPLOIEMENT.md, "Restaurer une sauvegarde".
 while true; do
   stamp=$(date +%Y-%m-%d-%H%M)

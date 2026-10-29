@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD) — RESTO, système distribué de gestion de restaurant
 
-> Le vocabulaire (Séance, Addition, Carte, Plat du jour, Rupture…) est défini dans [`CONTEXT.md`](../CONTEXT.md).
+> Le vocabulaire (Séance, Addition, Carte, Plat du jour, Rupture…) est défini dans [`CONTEXT.md`](CONTEXT.md).
 
 ## 1. Vue d'ensemble
 RESTO est une application distribuée de gestion de restaurant. Un serveur central (API REST + WebSockets) synchronise en temps réel plusieurs espaces : gérant, réservation, chef, salle (serveurs), caisse, livraison, parking, stock et clients.

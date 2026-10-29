@@ -9,7 +9,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 curl \
     && rm -rf /var/lib/apt/lists/*
 
-# pytorch first. cpu by default (much smaller); for an nvidia gpu, build with docker-compose.gpu.yml,
+# pytorch first. cpu by default (much smaller); for an nvidia gpu, build with docker/docker-compose.gpu.yml,
 # which picks the cuda build of pytorch (the gpu itself is given to the container at run time)
 ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
 ARG TORCH_VERSION=2.15.0
@@ -26,7 +26,7 @@ ARG MODEL_SHA256=eb3bb8268828aeaf515cec23a4bfafd793944a86fe9af94ba7823609c14522a
 RUN curl -fsSL -o yolo26n-pose.pt "$MODEL_URL" && echo "$MODEL_SHA256  yolo26n-pose.pt" | sha256sum -c -
 
 COPY resto_vision ./resto_vision
-# the demo clip (mixkit free license, see samples/README.md): downloaded and checked like the model,
+# the demo clip (mixkit free license, see docs/VISION.md): downloaded and checked like the model,
 # so no raw footage of people is stored in the repository
 ARG SAMPLE_URL=https://assets.mixkit.co/videos/4385/4385-720.mp4
 ARG SAMPLE_SHA256=0949077e575842910401fda801dea0aaa47f259064ccd0d32d89f53652a45af3

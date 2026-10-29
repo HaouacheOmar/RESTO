@@ -1,10 +1,12 @@
 # Production on one Linux server (an Icosnet VM or any host). Guide: docs/DEPLOIEMENT.md
-#   cp deploy/.env.prod.example .env   # then fill it in
+#   cd docker
+#   cp .env.prod.example .env   # then fill it in
 #   docker compose -f docker-compose.prod.yml up -d --build
 #   docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser   # the first manager
 # Differences with docker-compose.yml (the local stack, unchanged): HTTPS (Caddy), no demo data, required secrets,
 # only ports 80/443 open, restart after a crash or a reboot, daily backups. The vision workers run in the
 # restaurants, not here.
+name: resto
 x-always: &always
   restart: unless-stopped
 
@@ -32,7 +34,7 @@ services:
 
   backend:
     <<: *always
-    build: ./server
+    build: ../server
     env_file: .env  # email, sentry... (everything in .env)
     environment:
       DEBUG: "0"
@@ -54,7 +56,7 @@ services:
 
   web:
     <<: *always
-    build: ./client
+    build: ../client
     depends_on: [backend]
 
   caddy:
@@ -64,7 +66,7 @@ services:
     environment:
       DOMAIN: ${DOMAIN}
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data  # the certificates
       - caddy_config:/config
     depends_on: [web]
@@ -79,7 +81,7 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
       KEEP_DAYS: ${KEEP_DAYS:-14}
     volumes:
-      - ./deploy/backup.sh:/backup.sh:ro
+      - ./backup.sh:/backup.sh:ro
       - ./backups:/backups
       - media:/media:ro
     entrypoint: ["sh", "/backup.sh"]

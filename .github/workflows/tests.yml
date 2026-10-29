@@ -79,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Start the stack
-        run: docker compose up -d --build
+        run: docker compose -f docker/docker-compose.yml up -d --build
         env:
           RATE_LIMIT_SCALE: "100"  # one IP plays all nine roles
       - name: Wait until it answers
@@ -95,7 +95,7 @@ jobs:
         working-directory: e2e
       - name: API logs
         if: failure()
-        run: docker compose logs backend --tail 200
+        run: docker compose -f docker/docker-compose.yml logs backend --tail 200
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

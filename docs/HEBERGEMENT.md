@@ -80,7 +80,7 @@ La démo en ligne (Vercel + Render) ne sert qu'au portfolio : le modèle de visi
 ## 7. Ce qui reste à faire dans le code
 
 Avant l'installation chez Icosnet, il reste trois choses à faire dans le code :
-1. **Ajouter les workers à `docker-compose.prod.yml`** : un service `vision-<caméra>` par caméra, avec le GPU (comme `docker-compose.gpu.yml`), `VIDEO_SOURCE=rtsp://…` (l'adresse de la caméra dans le VPN) et son jeton.
+1. **Ajouter les workers à `docker/docker-compose.prod.yml`** : un service `vision-<caméra>` par caméra, avec le GPU (comme `docker/docker-compose.gpu.yml`), `VIDEO_SOURCE=rtsp://…` (l'adresse de la caméra dans le VPN) et son jeton.
 2. **En phase 2 seulement** (workers sur un autre serveur que l'application) : faire pointer nginx `/stream/<caméra>/` vers l'adresse interne de ce serveur, au lieu du nom Docker.
 3. **Un test de charge** sur le GPU proposé par Icosnet, avec le nombre réel de caméras, pour fixer `TARGET_FPS`.
 

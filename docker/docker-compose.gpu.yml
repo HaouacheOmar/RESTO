@@ -1,5 +1,5 @@
 # the vision worker on an nvidia gpu (smooth video: about 25 images per second instead of about 8 on a cpu):
-#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml --profile vision up --build
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.gpu.yml --profile vision up --build
 # needs the nvidia driver (and, on linux, the nvidia container toolkit; docker desktop on windows has it).
 services:
   vision-salle:

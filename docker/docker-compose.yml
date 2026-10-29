@@ -1,4 +1,5 @@
-# Whole stack: docker compose up --build  →  http://localhost:8088
+# Whole stack (from the repo root): docker compose -f docker/docker-compose.yml up --build  →  http://localhost:8088
+name: resto  # same project name as before the move to docker/: keeps the containers and the local database
 services:
   postgres:
     image: postgres:17
@@ -22,7 +23,7 @@ services:
       retries: 20
 
   backend:
-    build: ./server
+    build: ../server
     environment:
       DEBUG: "1"  # local stack over plain HTTP; production settings are in server/.env.example
       SECRET_KEY: local-docker-secret
@@ -41,16 +42,16 @@ services:
       redis: { condition: service_healthy }
 
   web:
-    build: ./client
+    build: ../client
     ports: ["8088:80"]
     depends_on: [backend]
 
-  # the vision worker (yolo pose + deepsort): only with `docker compose --profile vision up`.
+  # the vision worker (yolo pose + deepsort): only with `--profile vision`.
   # one worker per camera, named vision-<camera slug> (nginx finds it by that name). another zone:
   # copy this service as vision-vip with its own VIDEO_SOURCE and the token shown in the manager's
   # "Caméras" page.
   vision-salle:
-    build: ./vision
+    build: ../vision
     profiles: [vision]
     environment:
       RESTO_API_URL: http://backend:8000

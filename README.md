@@ -47,7 +47,7 @@ A distributed restaurant management system. Every role in the restaurant (manage
 Requires Docker only.
 
 ```bash
-docker compose up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 Then open **http://localhost:8088**. The stack starts PostgreSQL, Redis, the Django/Daphne backend (migrations and demo data applied on startup) and the React frontend served by nginx, which also proxies the API, the admin and the WebSockets on the same origin.
@@ -62,7 +62,7 @@ Demo accounts: `manager`, `reservations`, `chef`, `waiter`, `cashier`, `driver`,
 ### Developing without rebuilding images
 
 ```bash
-docker compose up -d postgres redis        # PostgreSQL :5434, Redis :6380
+docker compose -f docker/docker-compose.yml up -d postgres redis        # PostgreSQL :5434, Redis :6380
 cd server && python -m venv ../venv && source ../venv/bin/activate   # Windows: ..\venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate && python manage.py seed_demo
@@ -75,7 +75,7 @@ Run the backend tests (PostgreSQL and Redis up): `cd server && python manage.py 
 End-to-end journeys (Playwright) across the role spaces, against the whole stack:
 
 ```bash
-RATE_LIMIT_SCALE=100 docker compose up -d --build   # one IP plays all nine roles: raise the rate limits
+RATE_LIMIT_SCALE=100 docker compose -f docker/docker-compose.yml up -d --build   # one IP plays all nine roles: raise the rate limits
 cd e2e && npm ci && npx playwright install chromium
 npx playwright test                                 # BASE_URL=https://staging… to target another environment
 ```
@@ -84,7 +84,7 @@ CI runs the backend tests, the module boundaries (`lint-imports`), the frontend 
 
 ## Documentation
 
-- [`CONTEXT.md`](CONTEXT.md): domain glossary (Séance, Addition, Carte, Plat du jour, Rupture…).
+- [`docs/CONTEXT.md`](docs/CONTEXT.md): domain glossary (Séance, Addition, Carte, Plat du jour, Rupture…).
 - [`docs/PRD.md`](docs/PRD.md): roles and use cases.
 - [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md): architecture, endpoints, WebSocket events, key rules.
 - [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md): data model and constraints.
@@ -104,7 +104,7 @@ The specs are written in French, like the restaurant's vocabulary.
 
 The container applies migrations and creates the demo restaurant on start (`SEED_DEMO=0` turns that off). Variables: `server/.env.example`.
 
-**For a real restaurant** (one Linux server, e.g. an Icosnet VM): `docker-compose.prod.yml` adds HTTPS (Caddy), no demo data, required secrets, restart policies and daily backups. Step-by-step guide (French): [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md); what to rent (GPU server, VPN, sizing): [`docs/HEBERGEMENT.md`](docs/HEBERGEMENT.md).
+**For a real restaurant** (one Linux server, e.g. an Icosnet VM): `docker/docker-compose.prod.yml` adds HTTPS (Caddy), no demo data, required secrets, restart policies and daily backups. Step-by-step guide (French): [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md); what to rent (GPU server, VPN, sizing): [`docs/HEBERGEMENT.md`](docs/HEBERGEMENT.md).
 
 ## Roadmap
 

@@ -1,12 +1,12 @@
 # Déploiement en production
 
-Installer RESTO pour un vrai restaurant, sur **un serveur Linux** : une VM cloud chez Icosnet, ou chez n'importe quel autre hébergeur. Toute l'application tourne avec `docker-compose.prod.yml`.
+Installer RESTO pour un vrai restaurant, sur **un serveur Linux** : une VM cloud chez Icosnet, ou chez n'importe quel autre hébergeur. Toute l'application tourne avec `docker/docker-compose.prod.yml`.
 
 Ce qu'il faut louer chez l'hébergeur (serveur GPU, VPN, dimensionnement) : [HEBERGEMENT.md](HEBERGEMENT.md).
 
-Le fichier `docker-compose.yml` reste celui du poste de développement : la démo locale sur `http://localhost:8088`, avec les comptes de démonstration.
+Le fichier `docker/docker-compose.yml` reste celui du poste de développement : la démo locale sur `http://localhost:8088`, avec les comptes de démonstration.
 
-| | Local (`docker-compose.yml`) | Production (`docker-compose.prod.yml`) |
+| | Local (`docker/docker-compose.yml`) | Production (`docker/docker-compose.prod.yml`) |
 | :--- | :--- | :--- |
 | Adresse | `http://localhost:8088` | `https://<domaine>` (certificat Let's Encrypt automatique, Caddy) |
 | Données de démo | oui (`SEED_DEMO=1`, mot de passe public) | **non** (`SEED_DEMO=0`) ; le gérant est créé avec `createsuperuser` |
@@ -14,6 +14,8 @@ Le fichier `docker-compose.yml` reste celui du poste de développement : la dém
 | Ports ouverts | 8088, 5434, 6380 | 80 et 443 seulement |
 | Redémarrage après panne ou reboot | non | oui (`restart: unless-stopped`) |
 | Sauvegardes | non | base + photos chaque jour, gardées 14 jours, dans `backups/` |
+
+Toutes les commandes de ce guide se lancent depuis le dossier `docker/` du dépôt.
 
 ## 1. Ce qu'il faut
 
@@ -27,9 +29,9 @@ Le fichier `docker-compose.yml` reste celui du poste de développement : la dém
 ```bash
 # sur la VM
 curl -fsSL https://get.docker.com | sh
-git clone https://github.com/HaouacheOmar/RESTO.git && cd RESTO
+git clone https://github.com/HaouacheOmar/RESTO.git && cd RESTO/docker   # toutes les commandes ci-dessous : depuis docker/
 
-cp deploy/.env.prod.example .env
+cp .env.prod.example .env
 nano .env      # DOMAIN, SECRET_KEY, POSTGRES_PASSWORD, MONITORING_STREAM_SECRET, EMAIL_*
                # une valeur aléatoire : python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 
@@ -46,7 +48,7 @@ Ouvrir `https://<domaine>` et se connecter avec ce compte gérant, qui a le rôl
 
 ## 3. Sauvegardes
 
-Le service `backup` écrit chaque jour dans `backups/` (sur la VM) :
+Le service `backup` écrit chaque jour dans `docker/backups/` (sur la VM) :
 - `resto-<date>.dump` : la base de données ;
 - `media-<date>.tgz` : les photos.
 
@@ -59,7 +61,7 @@ docker compose -f docker-compose.prod.yml logs backup
 **Copier aussi ces fichiers hors de la VM** : une sauvegarde qui reste sur le serveur disparaît avec lui. Par exemple, chaque nuit depuis une autre machine :
 
 ```bash
-rsync -a user@<ip-vm>:RESTO/backups/ ./resto-backups/
+rsync -a user@<ip-vm>:RESTO/docker/backups/ ./resto-backups/
 ```
 
 On peut aussi envoyer le dossier vers le stockage objet de l'hébergeur avec `rclone`.

@@ -1,6 +1,6 @@
 # Architecture et implémentation technique
 
-> Le vocabulaire métier est défini dans [`CONTEXT.md`](../CONTEXT.md), et les besoins dans [`PRD.md`](PRD.md).
+> Le vocabulaire métier est défini dans [`CONTEXT.md`](CONTEXT.md), et les besoins dans [`PRD.md`](PRD.md).
 
 ## 1. Stack
 
@@ -14,7 +14,7 @@
 | Back-office | Django admin (tous les modèles) |
 | Frontend | À venir (`client/`) |
 
-Tout se lance avec `docker compose up --build` à la racine (`docker-compose.yml`) : PostgreSQL, Redis, le backend (Daphne) et le frontend React servi par nginx sur **http://localhost:8088**. nginx sert l'application et relaie `/api`, `/admin`, `/static`, `/media` et `/ws` vers Django : tout est sur la même origine. En développement, PostgreSQL et Redis seuls (`docker compose up -d postgres redis`, ports hôte 5434 et 6380) et Django dans le `venv/` à la racine. Pour un vrai restaurant : `docker-compose.prod.yml` (HTTPS, sans données de démo, secrets obligatoires, sauvegardes), voir [DEPLOIEMENT.md](DEPLOIEMENT.md).
+Tout se lance avec `docker compose -f docker/docker-compose.yml up --build` depuis la racine (les fichiers Docker Compose sont dans `docker/`) : PostgreSQL, Redis, le backend (Daphne) et le frontend React servi par nginx sur **http://localhost:8088**. nginx sert l'application et relaie `/api`, `/admin`, `/static`, `/media` et `/ws` vers Django : tout est sur la même origine. En développement, PostgreSQL et Redis seuls (`docker compose -f docker/docker-compose.yml up -d postgres redis`, ports hôte 5434 et 6380) et Django dans le `venv/` à la racine. Pour un vrai restaurant : `docker/docker-compose.prod.yml` (HTTPS, sans données de démo, secrets obligatoires, sauvegardes), voir [DEPLOIEMENT.md](DEPLOIEMENT.md).
 
 ---
 
@@ -166,10 +166,10 @@ React 19 + TypeScript (Vite), React Router, Motion. Identité visuelle : [`SYSTE
 ## 8. Lancer et tester (depuis `server/`)
 
 ```bash
-docker compose up --build                              # depuis la racine : toute la pile sur http://localhost:8088
+docker compose -f docker/docker-compose.yml up --build    # depuis la racine : toute la pile sur http://localhost:8088
 
 # ou, pour développer le backend :
-docker compose up -d postgres redis
+docker compose -f docker/docker-compose.yml up -d postgres redis
 ../venv/Scripts/python.exe -m pip install -r requirements.txt
 ../venv/Scripts/python.exe manage.py migrate
 ../venv/Scripts/python.exe manage.py seed_demo         # restaurant de démo ; ne crée que ce qui manque (relancé à chaque démarrage Docker sans écraser les modifications)
@@ -246,7 +246,7 @@ Une lecture écrase la précédente (une ligne par table, **aucun historique**).
 
 **Couleur d'une table** (le cœur décide toujours en premier) : Séance ouverte → **Occupée** (encre, avec le nombre vu par la caméra) ; réservation en cours → **Réservée** (crème et or), ou **Clients arrivés ?** si la caméra voit des personnes assises (à installer au check-in) ; sinon personnes assises sans Séance → **Sans séance** (danger : quelqu'un doit s'en occuper) ; sinon **Libre**. Une table de 3 avec 2 clients est occupée : la place libre n'est pas proposée.
 
-**Déploiement** : `docker compose --profile vision up` lance le worker (image CPU, environ 8 images/s ; avec `-f docker-compose.gpu.yml`, PyTorch CUDA sur une carte NVIDIA, environ 25 images/s ; modèle et clip de démonstration téléchargés à la construction et vérifiés par SHA-256 ; utilisateur non root ; `/healthz` et `/metrics`). Un worker par caméra, nommé `vision-<slug>` : nginx envoie `/stream/<slug>/…` vers `http://vision-<slug>:8090` (le service de démo s'appelle `vision-salle` ; une zone de plus = une copie de ce service avec son `VIDEO_SOURCE` et son jeton). Une caméra réelle : `VIDEO_SOURCE=rtsp://…`, `DEVICE=cuda:0` pour un GPU, zones et masques dessinés dans l'onglet Caméras. Le clip de démonstration est un time-lapse : le worker le joue à demi-vitesse (`VIDEO_SPEED=0.5`). Sur la démo publique (Vercel + Render), aucun modèle ne tourne : l'onglet Surveillance l'annonce (« Modèle non supporté sur la version en ligne ») et garde le plan des tables ; la démonstration complète se fait en direct, avec un worker sur GPU. `client/public/monitoring/demo.mp4` (flouté à l'avance par `python -m resto_vision render`) sert encore de fond à l'éditeur de zones quand la caméra n'a pas de worker.
+**Déploiement** : `--profile vision` lance le worker (image CPU, environ 8 images/s ; avec `-f docker/docker-compose.gpu.yml`, PyTorch CUDA sur une carte NVIDIA, environ 25 images/s ; modèle et clip de démonstration téléchargés à la construction et vérifiés par SHA-256 ; utilisateur non root ; `/healthz` et `/metrics`). Un worker par caméra, nommé `vision-<slug>` : nginx envoie `/stream/<slug>/…` vers `http://vision-<slug>:8090` (le service de démo s'appelle `vision-salle` ; une zone de plus = une copie de ce service avec son `VIDEO_SOURCE` et son jeton). Une caméra réelle : `VIDEO_SOURCE=rtsp://…`, `DEVICE=cuda:0` pour un GPU, zones et masques dessinés dans l'onglet Caméras. Le clip de démonstration est un time-lapse : le worker le joue à demi-vitesse (`VIDEO_SPEED=0.5`). Sur la démo publique (Vercel + Render), aucun modèle ne tourne : l'onglet Surveillance l'annonce (« Modèle non supporté sur la version en ligne ») et garde le plan des tables ; la démonstration complète se fait en direct, avec un worker sur GPU. `client/public/monitoring/demo.mp4` (flouté à l'avance par `python -m resto_vision render`) sert encore de fond à l'éditeur de zones quand la caméra n'a pas de worker.
 
 **Confidentialité** : la salle est déclarée sous vidéosurveillance (pied de page du site, formulaire de réservation), conformément à la loi 18-07 ; aucune image n'est enregistrée, aucune reconnaissance faciale, seuls des nombres sortent du worker.
 
