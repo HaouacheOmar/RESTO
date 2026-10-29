@@ -499,10 +499,3 @@ export interface CameraSetup extends MonitoringCamera {
   zones: { table_number: number; polygon: Point[]; outline: Point[] }[]
   token?: string  // only right after the camera is created
 }
-
-/** the readings of the demo clip, recorded by the vision worker ("render" command). */
-export interface MonitoringTimeline {
-  fps: number
-  duration: number
-  events: { t: number; tables: { table_number: number; people: number; occupied: boolean }[] }[]
-}

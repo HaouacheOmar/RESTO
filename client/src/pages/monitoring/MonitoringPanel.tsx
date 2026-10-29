@@ -1,8 +1,8 @@
-import { Eye, Radio, ShieldCheck } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Cpu, Eye, Radio, ShieldCheck } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
-  api, useApi, type CameraReading, type MonitoredTable, type MonitoringCamera, type MonitoringTimeline,
+  api, useApi, type CameraReading, type MonitoredTable, type MonitoringCamera,
 } from '../../api'
 import { useLiveRefresh } from '../../realtime'
 import Loading from '../../ui/Loading'
@@ -28,26 +28,11 @@ const BADGES: Record<TableStatus, string> = {
 }
 const ICON = { size: 16, strokeWidth: 1.25, 'aria-hidden': true } as const  // lucide icons: thin, decorative
 const time = new Intl.DateTimeFormat('fr-DZ', { hour: '2-digit', minute: '2-digit' })
-const REPLAY_SPEED = 0.5
 const REFRESH_EVERY = 15_000  // séances opened by the waiters are not pushed to the desk: we also poll
 
-/** the camera reading of each table at a moment of the demo clip (the last change before that time). */
-function readingsAt(timeline: MonitoringTimeline, seconds: number) {
-  let current = timeline.events[0]
-  for (const event of timeline.events) {
-    if (event.t > seconds) break
-    current = event
-  }
-  return new Map((current?.tables ?? []).map((t) => [t.table_number, { people: t.people, occupied: t.occupied }]))
-}
-
-/** the camera picture: the live blurred stream if a worker runs, otherwise the demo clip blurred in advance. */
-function CameraView({ camera, onReplayReadings }: {
-  camera: MonitoringCamera; onReplayReadings: (readings: Map<number, CameraReading> | null) => void
-}) {
+/** the camera picture: the live blurred stream when its worker runs. */
+function CameraView({ camera }: { camera: MonitoringCamera }) {
   const [streamUrl, setStreamUrl] = useState<string | null>(null)
-  const [timeline, setTimeline] = useState<MonitoringTimeline | null>(null)
-  const video = useRef<HTMLVideoElement>(null)
 
   // live: ask the api for a signed url (valid 60 s); ask again if the stream breaks
   const openStream = useCallback(() => {
@@ -55,13 +40,6 @@ function CameraView({ camera, onReplayReadings }: {
       .then(({ url }) => setStreamUrl(url)).catch(() => setStreamUrl(null))
   }, [camera.slug])
   useEffect(() => { if (camera.live) openStream() }, [camera.live, openStream])
-
-  // demo: load the recorded readings (a static file next to the clip)
-  useEffect(() => {
-    if (camera.live || !camera.replay_timeline) return
-    fetch(camera.replay_timeline).then((r) => r.json()).then(setTimeline).catch(() => setTimeline(null))
-    return () => onReplayReadings(null)
-  }, [camera.live, camera.replay_timeline, onReplayReadings])
 
   if (camera.live) {
     return (
@@ -73,18 +51,17 @@ function CameraView({ camera, onReplayReadings }: {
       </figure>
     )
   }
-  if (!camera.replay_video) return <p className="cctv-empty">Caméra hors ligne.</p>
-  return (
-    <figure className="cctv">
-      <video ref={video} src={camera.replay_video} autoPlay muted loop playsInline
-        // the demo clip is a time-lapse: half speed looks like real life (the readings follow currentTime)
-        onLoadedMetadata={(e) => { e.currentTarget.playbackRate = REPLAY_SPEED }}
-        aria-label={`Caméra ${camera.name}, séquence de démonstration floutée`}
-        // the clip plays by itself; every time its position moves, we replay the readings recorded at that moment
-        onTimeUpdate={() => timeline && video.current && onReplayReadings(readingsAt(timeline, video.current.currentTime))} />
-      <figcaption><span className="cctv-badge">Démo</span> {camera.name} · séquence enregistrée et floutée à l’avance</figcaption>
-    </figure>
-  )
+  // the demo camera (it has a demo clip) on the hosted demo, where no worker can run: say so plainly
+  if (camera.replay_video) {
+    return (
+      <div className="cctv-empty cctv-notice" role="note">
+        <Cpu {...ICON} />
+        <p><strong>Modèle non supporté sur la version en ligne</strong></p>
+        <p>L’analyse vidéo (YOLO pose et DeepSORT) a besoin d’un serveur avec carte graphique : elle tourne dans le restaurant ou chez l’hébergeur, pas sur cette démo. Démonstration complète en direct sur demande.</p>
+      </div>
+    )
+  }
+  return <p className="cctv-empty">Caméra hors ligne.</p>
 }
 
 /** one table drawn from above: its chairs, filled with the people the camera counts. */
@@ -140,7 +117,6 @@ const areaOf = (camera: { area: string }) => camera.area || 'Salle'
 export default function MonitoringPanel() {
   const tables = useApi<MonitoredTable[]>('monitoringTables')
   const cameras = useApi<MonitoringCamera[]>('monitoringCameras')
-  const [replay, setReplay] = useState<Map<number, CameraReading> | null>(null)
   // a restaurant can have several zones (salle vip, front de mer...), and several cameras per zone: pick one, then a camera
   const [area, setArea] = useState(ALL)
   const [cameraSlug, setCameraSlug] = useState('')
@@ -155,9 +131,6 @@ export default function MonitoringPanel() {
 
   const inArea = useMemo(() => (cameras.data ?? []).filter((c) => area === ALL || areaOf(c) === area), [cameras.data, area])
   const camera = inArea.find((c) => c.slug === cameraSlug) ?? inArea[0]
-  // the demo clip's readings only belong to the tables of the camera that is playing it
-  const readingOf = useMemo(() => (t: MonitoredTable) =>
-    (t.camera_slug === camera?.slug && replay?.has(t.number) ? replay.get(t.number)! : t.camera), [replay, camera?.slug])
 
   if (!tables.data || !cameras.data) return <Loading failed={tables.failed || cameras.failed} />
   const areas = [...new Set(cameras.data.map(areaOf))]
@@ -173,7 +146,7 @@ export default function MonitoringPanel() {
         <Choices label="Caméra" current={camera?.slug ?? ''} onSelect={setCameraSlug}
           options={inArea.map((c) => ({ id: c.slug, label: c.name }))} />
         {/* key: another camera is a new player (its own stream ticket or demo clip) */}
-        {camera ? <CameraView key={camera.slug} camera={camera} onReplayReadings={setReplay} /> : <p className="cctv-empty">Aucune caméra configurée.</p>}
+        {camera ? <CameraView key={camera.slug} camera={camera} /> : <p className="cctv-empty">Aucune caméra configurée.</p>}
         <p className="privacy-note"><ShieldCheck {...ICON} /> Les personnes sont floutées à la source, sur la caméra : aucune image n’est enregistrée, seul le nombre de personnes par table est transmis.</p>
       </div>
       <div className="monitoring-map">
@@ -186,7 +159,7 @@ export default function MonitoringPanel() {
             <section key={zone} aria-labelledby={`mt-${zone}`}>
               <h3 id={`mt-${zone}`} className="desk-section-title"><Eye {...ICON} /> {title}</h3>
               <ul className="mt-grid">{list.map((t) => (
-                <TableDrawing key={t.number} table={t} camera={readingOf(t)}
+                <TableDrawing key={t.number} table={t} camera={t.camera}
                   cameraName={names.size > 1 && t.camera_slug ? names.get(t.camera_slug) : undefined} />
               ))}</ul>
             </section>
